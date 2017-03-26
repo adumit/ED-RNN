@@ -6,6 +6,7 @@ Tiny_Subsample/
 Utils/__pycache__/
 model/__pycache__/
 results_data/
+*.avi
 
 ### Windows template
 # Windows image file caches
@@ -60,5 +61,3 @@ Icon
 Network Trash Folder
 Temporary Items
 .apdisk
-
-
