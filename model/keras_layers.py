@@ -104,9 +104,9 @@ def Lenet(input_layer):
 
 def Block(input_layer, num_filters, conv_size, conv_strides):
     x = TimeDistributed(Convolution2D(filters=num_filters, kernel_size=conv_size, strides=conv_strides,
-                                      activation="linear"))(input_layer)
+                                      activation="relu"))(input_layer)
     x = TimeDistributed(BatchNormalization())(x)
-    x = relu(x)
+    # x = relu(x)
     return x
 
 
