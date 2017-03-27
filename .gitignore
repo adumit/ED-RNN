@@ -7,6 +7,7 @@ Utils/__pycache__/
 model/__pycache__/
 results_data/
 *.avi
+Debug_Data
 
 ### Windows template
 # Windows image file caches

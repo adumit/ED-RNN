@@ -2,11 +2,11 @@ from keras import backend as K
 from keras.layers import Input, TimeDistributed, Dense, LSTM, Convolution2D, BatchNormalization, MaxPool2D, Flatten
 from keras.models import Model
 from keras.optimizers import Adam
-from .keras_layers import Lenet, NiN
+from .keras_layers import Lenet, NiN, ED_EMA
 
 CPU = -1
 
-# Small net settings for testing
+# Small net settings for testing and debugging
 NUM_CONV_LAYERS = 2
 CONV_SIZES = [(13, 13), (5, 5)]
 CONV_FILTERS = [48, 128]
@@ -39,9 +39,12 @@ class ED_RNN:
             self.num_classes = opt.num_classes
             self.data_dir = opt.data_dir
 
-            self.inputs = Input(batch_shape=(opt.batch_size, opt.num_steps, opt.input_height, opt.input_width, opt.input_channels),
+            self.inputs = Input(batch_shape=(opt.batch_size, opt.num_steps, opt.height, opt.width, opt.num_channels),
                                 dtype='float32', name='video')
             x = self.inputs
+
+            if opt.use_edema == 1:
+                x = ED_EMA(tao=1.5, v_threshold=0.05, beta=2.0, return_sequences=True)(x)
 
             if opt.network.lower() == "lenet":
                 x = Lenet(x)

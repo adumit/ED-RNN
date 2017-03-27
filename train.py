@@ -11,9 +11,9 @@ def main(opt):
     print("Completed loading data. It took ", (datetime.now() - start).seconds, "seconds.")
 
     opt.num_classes = train_loader.num_classes
-    opt.input_height = train_loader.height
-    opt.input_width = train_loader.width
-    opt.input_channels = train_loader.num_channels
+    opt.height = train_loader.height
+    opt.width = train_loader.width
+    opt.num_channels = train_loader.num_channels
 
     model = ED_RNN(opt)
     model.train(train_loader)
@@ -23,12 +23,13 @@ if __name__=="__main__":
 
     parser = argparse.ArgumentParser(description='Train a ED-RNN on video data')
     # data
-    parser.add_argument('--data_dir', type=str, default='./KTHData/', help='KTHData directory')
+    parser.add_argument('--data_dir', type=str, default='./Debug_Data/', help='KTHData directory')
     # model params
     parser.add_argument('--rnn_size', type=int, default=127, help='size of RNN cell internal state')
     parser.add_argument('--num_rnn_layers', type=int, default=1, help='number of layers in the LSTM')
     parser.add_argument('--network', type=str, default="lenet", help='Type of network. Either lenet, nin, or anything '
-                                                                     'else to use conv-net params in rnn_model.py')
+                                                               'else to use conv-net params in rnn_model.py')
+    parser.add_argument('--use_edema', type=int, default=1, help='Use the ED_EMA layer or not')
     # optimization
     parser.add_argument('--learning_rate', type=float, default=1, help='starting learning rate')
     parser.add_argument('--batch_norm', type=int, default=0, help='use batch normalization over input (1=yes)')
