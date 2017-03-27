@@ -86,18 +86,17 @@ class ED_EMA(Recurrent):
         return output, [output, ema]
 
 
-def Lenet(batch_size, num_steps, input_height, input_width, input_channels):
-    x = Input(batch_shape=(batch_size, num_steps, input_height, input_width, input_channels),
-              dtype='float32', name='video')
+def Lenet(input_layer):
     x = TimeDistributed(Convolution2D(filters=6, kernel_size=(5, 5),
-                                      strides=(1, 1), activation='linear'))(x)
+                                      strides=(1, 1), activation='relu'))(input_layer)
     x = TimeDistributed(BatchNormalization())(x)
-    x = relu(x)
+    # TODO: Need to have relu after the batch norm?
+    # x = relu(x)
     x = TimeDistributed(MaxPool2D(pool_size=(2, 2), strides=(2, 2)))(x)
     x = TimeDistributed(Convolution2D(filters=16, kernel_size=(5, 5),
-                                      strides=(1, 1), activation='linear'))(x)
+                                      strides=(1, 1), activation='relu'))(x)
     x = TimeDistributed(BatchNormalization())(x)
-    x = relu(x)
+    # x = relu(x)
     x = TimeDistributed(MaxPool2D(pool_size=(2, 2), strides=(2, 2)))(x)
     x = TimeDistributed(Flatten())(x)
     return x
@@ -111,10 +110,8 @@ def Block(input_layer, num_filters, conv_size, conv_strides):
     return x
 
 
-def NiN(batch_size, num_steps, input_height, input_width, input_channels):
-    x = Input(batch_shape=(batch_size, num_steps, input_height, input_width, input_channels),
-              dtype='float32', name='video')
-    x = Block(x, 192, (5, 5), (1, 1))
+def NiN(input_layer):
+    x = Block(input_layer, 192, (5, 5), (1, 1))
     x = Block(x, 160, (1, 1), (1, 1))
     x = Block(x, 96, (1, 1), (1, 1))
     x = TimeDistributed(MaxPool2D(pool_size=(3, 3), strides=(2, 2)))(x)
@@ -128,4 +125,3 @@ def NiN(batch_size, num_steps, input_height, input_width, input_channels):
     x = Block(x, 192, (1, 1), (1, 1))
     x = TimeDistributed(Flatten())(x)
     return x
-

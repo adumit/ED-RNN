@@ -27,6 +27,8 @@ if __name__=="__main__":
     # model params
     parser.add_argument('--rnn_size', type=int, default=127, help='size of RNN cell internal state')
     parser.add_argument('--num_rnn_layers', type=int, default=1, help='number of layers in the LSTM')
+    parser.add_argument('--network', type=str, default="lenet", help='Type of network. Either lenet, nin, or anything '
+                                                                     'else to use conv-net params in rnn_model.py')
     # optimization
     parser.add_argument('--learning_rate', type=float, default=1, help='starting learning rate')
     parser.add_argument('--batch_norm', type=int, default=0, help='use batch normalization over input (1=yes)')

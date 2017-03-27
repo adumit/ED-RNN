@@ -2,6 +2,7 @@ from keras import backend as K
 from keras.layers import Input, TimeDistributed, Dense, LSTM, Convolution2D, BatchNormalization, MaxPool2D, Flatten
 from keras.models import Model
 from keras.optimizers import Adam
+from .keras_layers import Lenet, NiN
 
 CPU = -1
 
@@ -12,16 +13,14 @@ CONV_FILTERS = [48, 128]
 CONV_STRIDES = [(4, 4), (2, 2)]
 CONV_POOL = [(2, 2), (2, 2)]
 
-# # AlexNet settings
-# NUM_CONV_LAYERS = 5
-# CONV_SIZES = [(13, 13), (5, 5), (3, 3), (3, 3), (3, 3)]
-# CONV_FILTERS = [48, 128, 192, 192, 128]
-
 class ED_RNN:
     def __init__(self, opt):
         self.opt = opt
 
         device = '/cpu:0'
+
+        # Dirty workaround for BatchNormalization layers. https://github.com/fchollet/keras/issues/5975
+        K.set_learning_phase(1)
 
         if self.opt.gpu != CPU:
             device = '/gpu:' + str(self.opt.gpu)
@@ -44,15 +43,17 @@ class ED_RNN:
                                 dtype='float32', name='video')
             x = self.inputs
 
-            if opt.batch_norm:
-                x = BatchNormalization()(x)
+            if opt.network.lower() == "lenet":
+                x = Lenet(x)
+            elif opt.network.lower() == "nin":
+                x = NiN(x)
+            else:
+                # General conv-net with parameters defined at top of file
+                for cl in range(NUM_CONV_LAYERS):
+                    x = TimeDistributed(Convolution2D(filters=CONV_FILTERS[cl], kernel_size=CONV_SIZES[cl],
+                                                      strides=CONV_STRIDES[cl], activation='relu'))(x)
+                    x = TimeDistributed(MaxPool2D(pool_size=(CONV_POOL[cl])))(x)
 
-            for cl in range(NUM_CONV_LAYERS):
-                x = TimeDistributed(Convolution2D(filters=CONV_FILTERS[cl], kernel_size=CONV_SIZES[cl],
-                                                  strides=CONV_STRIDES[cl], activation='relu'))(x)
-                x = TimeDistributed(MaxPool2D(pool_size=(CONV_POOL[cl])))(x)
-
-            x = TimeDistributed(Flatten())(x)
             for rl in range(opt.num_rnn_layers):
                 x = LSTM(self.rnn_size, return_sequences=True, stateful=True)(x)
 
