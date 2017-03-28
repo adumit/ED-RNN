@@ -37,11 +37,11 @@ class KTHDataLoader:
         video_labels_validation = []
 
         seen_labels = {}
-        if not os.path.isdir("./Processed_KTH_Data"):
-            os.mkdir("./Processed_KTH_Data")
+        if not os.path.isdir("./Processed_KTH_Data_32_32/"):
+            os.mkdir("./Processed_KTH_Data_32_32/")
             print("No processed data found. Processing KTH data.")
             for vid_file in os.listdir(data_path):
-                process_video("./Processed_KTH_Data/", data_path, vid_file, 24, 24)
+                process_video("./Processed_KTH_Data_32_32/", data_path, vid_file, 32, 32)
             print("Done processing data.")
         for npfile in os.listdir("./Processed_KTH_Data/"):
             vid_label = npfile.split("_")[1]
@@ -50,7 +50,7 @@ class KTHDataLoader:
                     seen_labels[vid_label] = 0
                 else:
                     seen_labels[vid_label] = max(seen_labels.values()) + 1
-            vid = np.load("./Processed_KTH_Data/" + npfile)
+            vid = np.load("./Processed_KTH_Data_32_32/" + npfile)
             frameCount = vid.shape[0]
 
             number_of_slices = math.floor(frameCount / num_steps)
@@ -84,6 +84,13 @@ class KTHDataLoader:
         self.num_batches = len(self.batched_data)
         self.batch_index = 0
 
+        self.num_valid_batches = math.floor(len(video_data_validation) / batch_size)
+        self.validation_data = [
+            (np.concatenate(np.expand_dims(video_data_validation[i * batch_size:(i + 1) * batch_size], axis=0)),
+             np.array(video_labels_validation[i * batch_size:(i + 1) * batch_size]))
+            for i in range(self.num_valid_batches)]
+        self.validation_index = 0
+
     def generator(self):
         while True:
             if self.batch_index >= self.num_batches:
@@ -96,6 +103,13 @@ class KTHDataLoader:
             self.batch_index += 1
             yield (xdata, ydata)
 
+    def get_train_data(self):
+        return [x[0] for x in self.batched_data], [x[1] for x in self.batched_data]
+
+    def get_validation_data(self):
+        return np.concatenate([x[0] for x in self.validation_data], axis=0), \
+               np.concatenate([x[1] for x in self.validation_data], axis=0)
+
     def next_batch(self):
         if self.batch_index >= self.num_batches:
             self.batch_index = 0
@@ -106,3 +120,14 @@ class KTHDataLoader:
         ydata = np.expand_dims(sparse_ydata, axis=2)
         self.batch_index += 1
         return xdata, ydata
+
+    def validation_generator(self):
+        while True:
+            if self.validation_index >= self.num_valid_batches:
+                self.validation_index = 0
+
+            xdata = self.validation_data[self.validation_index][0]
+            sparse_ydata = self.validation_data[self.validation_index][1]
+            ydata = np.expand_dims(sparse_ydata, axis=2)
+            self.validation_index += 1
+            yield (xdata, ydata)

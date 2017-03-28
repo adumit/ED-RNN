@@ -31,9 +31,9 @@ if __name__=="__main__":
                                                                'else to use conv-net params in rnn_model.py')
     parser.add_argument('--use_edema', type=int, default=1, help='Use the ED_EMA layer or not')
     # optimization
-    parser.add_argument('--learning_rate', type=float, default=1, help='starting learning rate')
+    parser.add_argument('--learning_rate', type=float, default=0.001, help='starting learning rate')
     parser.add_argument('--batch_norm', type=int, default=0, help='use batch normalization over input (1=yes)')
-    parser.add_argument('--num_steps', type=int, default=20, help='number of timesteps to unroll for')
+    parser.add_argument('--num_steps', type=int, default=80, help='number of timesteps to unroll for')
     parser.add_argument('--batch_size', type=int, default=30, help='number of sequences to train on in parallel')
     parser.add_argument('--max_epochs', type=int, default=25, help='number of full passes through the training data')
     parser.add_argument('--gpu', type=int, default=0, help='Which gpu are you running on? -1 for cpu, you lame')

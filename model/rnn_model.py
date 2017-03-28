@@ -2,7 +2,9 @@ from keras import backend as K
 from keras.layers import Input, TimeDistributed, Dense, LSTM, Convolution2D, BatchNormalization, MaxPool2D, Flatten
 from keras.models import Model
 from keras.optimizers import Adam
+from keras.metrics import sparse_categorical_accuracy
 from .keras_layers import Lenet, NiN, ED_EMA
+from .Callbacks import *
 
 CPU = -1
 
@@ -27,6 +29,7 @@ class ED_RNN:
         with K.tf.device(device):
             K.set_session(K.tf.Session(config=K.tf.ConfigProto(allow_soft_placement=True, log_device_placement=False)))
             self.learning_rate = opt.learning_rate
+            self.max_epochs = opt.max_epochs
 
             self.num_rnn_layers = opt.num_rnn_layers
             self.rnn_size = opt.rnn_size
@@ -44,7 +47,8 @@ class ED_RNN:
             x = self.inputs
 
             if opt.use_edema == 1:
-                x = ED_EMA(tao=1.5, v_threshold=0.05, beta=2.0, return_sequences=True)(x)
+                x = ED_EMA(shape=(opt.batch_size, opt.height, opt.width, opt.num_channels),
+                           tao=1.5, v_threshold=0.05, beta=2.0, return_sequences=True)(x)
 
             if opt.network.lower() == "lenet":
                 x = Lenet(x)
@@ -58,17 +62,21 @@ class ED_RNN:
                     x = TimeDistributed(MaxPool2D(pool_size=(CONV_POOL[cl])))(x)
 
             for rl in range(opt.num_rnn_layers):
-                x = LSTM(self.rnn_size, return_sequences=True, stateful=True)(x)
+                x = LSTM(self.rnn_size, return_sequences=True)(x)
 
             self.output = TimeDistributed(Dense(input_dim=self.rnn_size,
                                                 output_dim=opt.num_classes, activation='softmax'))(x)
             self.model = Model(input=self.inputs, output=self.output)
             self.model.summary()
             self.optimizer = Adam(lr=opt.learning_rate)
-            self.model.compile(loss='sparse_categorical_crossentropy', optimizer=self.optimizer)
+            self.model.compile(loss='sparse_categorical_crossentropy', optimizer=self.optimizer,
+                               metrics=[sparse_categorical_accuracy])
             self.write_dir = '../results_data/'
 
     def train(self, train_loader):
-        self.model.fit_generator(generator=train_loader.generator(),
-                                 steps_per_epoch=train_loader.num_batches)
+        self.model.fit_generator(generator=train_loader.generator(), steps_per_epoch=train_loader.num_batches,
+                                 validation_data=train_loader.validation_generator(),
+                                 validation_steps=train_loader.num_valid_batches,
+                                 epochs=self.max_epochs,
+                                 callbacks=[TestCallback(train_loader, train_loader.num_valid_batches)])
 

@@ -46,15 +46,27 @@ class EMA(Recurrent):
 
 
 class ED_EMA(Recurrent):
-    def __init__(self, tao=1.5, v_threshold=0.05, beta=2.0, **kwargs):
+    def __init__(self, shape, tao=1.5, v_threshold=0.05, beta=2.0, **kwargs):
+        self.shape = shape
         self.tao = tao
         self.v_threshold = v_threshold
         self.beta = beta
         super(ED_EMA, self).__init__(**kwargs)
         self.input_spec = InputSpec(ndim=5)
 
+    def tao_init(self, shape, dtype=None):
+        return K.variable(np.ones(shape=shape, dtype=dtype) * self.tao)
+
+    def beta_init(self, shape, dtype=None):
+        return K.variable(np.ones(shape=shape, dtype=dtype) * self.beta)
+
     def build(self, input_shape):
         input_dim = input_shape[2]
+
+        # TODO: Are there constraints on tao and beta?
+        self.tao_mat = self.add_weight(shape=self.shape, initializer=self.tao_init, name="tao")
+        self.beta_mat = self.add_weight(shape=self.shape, initializer=self.beta_init, name="beta")
+
         self.input_dim = input_dim
         self.output_dim = input_dim
         self.states = [None, None]
@@ -134,8 +146,8 @@ class ED_EMA(Recurrent):
         self.prev_output = prev_output = states[0]
         self.prev_ema = prev_ema = states[1]
 
-        ema = (1.0 - 1.0/self.tao) * prev_ema + 1.0/self.tao * x
-        output = (x / ema)**self.beta - (1.0 + self.v_threshold)
+        ema = (1.0 - 1.0/self.tao_mat) * prev_ema + 1.0/self.tao_mat * x
+        output = (x / ema)**self.beta_mat - (1.0 + self.v_threshold)
         if self.v_threshold > 0.0:
             output = relu(output, 0.0)
         else:
