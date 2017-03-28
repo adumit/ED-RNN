@@ -2,9 +2,9 @@ import numpy as np
 import tensorflow as tf
 from keras import backend as K
 from keras import activations
-from keras.layers.recurrent import Recurrent
+from keras.layers.recurrent import Recurrent, _time_distributed_dense
 from keras.layers import Input, TimeDistributed, Dense, LSTM, Convolution2D, BatchNormalization, MaxPool2D, \
-    Flatten, Dropout, AveragePooling2D, Activation, InputSpec
+    Flatten, Dropout, AveragePooling2D, Activation, InputSpec, initializers, regularizers, constraints, convolutional_recurrent
 from keras.models import Model
 from keras.optimizers import Adam
 from keras.activations import relu
@@ -144,6 +144,504 @@ class ED_EMA(Recurrent):
         return output, [output, ema]
 
 
+class CLSTM(Recurrent):
+    WIDTH = 0
+    HEIGHT = 1
+    CHANNELS = 2
+
+    def __init__(self, units,
+                 activation='tanh',
+                 recurrent_activation='hard_sigmoid',
+                 use_bias=True,
+                 kernel_initializer='glorot_uniform',
+                 recurrent_initializer='orthogonal',
+                 bias_initializer='zeros',
+                 unit_forget_bias=True,
+                 kernel_regularizer=None,
+                 recurrent_regularizer=None,
+                 bias_regularizer=None,
+                 activity_regularizer=None,
+                 kernel_constraint=None,
+                 recurrent_constraint=None,
+                 bias_constraint=None,
+                 dropout=0.,
+                 recurrent_dropout=0.,
+                 **kwargs):
+        self.units = units
+        self.activation = activations.get(activation)
+        self.recurrent_activation = activations.get(recurrent_activation)
+        self.use_bias = use_bias
+
+        self.kernel_initializer = initializers.get(kernel_initializer)
+        self.recurrent_initializer = initializers.get(recurrent_initializer)
+        self.bias_initializer = initializers.get(bias_initializer)
+        self.unit_forget_bias = unit_forget_bias
+
+        self.kernel_regularizer = regularizers.get(kernel_regularizer)
+        self.recurrent_regularizer = regularizers.get(recurrent_regularizer)
+        self.bias_regularizer = regularizers.get(bias_regularizer)
+        self.activity_regularizer = regularizers.get(activity_regularizer)
+
+        self.kernel_constraint = constraints.get(kernel_constraint)
+        self.recurrent_constraint = constraints.get(recurrent_constraint)
+        self.bias_constraint = constraints.get(bias_constraint)
+
+        self.dropout = min(1., max(0., dropout))
+        self.recurrent_dropout = min(1., max(0., recurrent_dropout))
+        super(CLSTM, self).__init__(**kwargs)
+        self.input_spec = InputSpec(ndim=5)
+
+    def build(self, input_shape):
+        # input_dim = input_shape[2]
+        # self.input_dim = input_dim
+        # self.output_dim = input_dim
+        # self.states = [None, None]
+        # if self.stateful:
+        #     self.reset_states()
+        # self.built = True
+        if isinstance(input_shape, list):
+            input_shape = input_shape[0]
+
+        batch_size = input_shape[0] if self.stateful else None
+        self.input_dim = input_shape[2:]
+        self.channels = self.input_dim[self.CHANNELS]
+        self.input_spec = InputSpec(shape=(([batch_size, None].extend(self.input_dim))))
+        self.state_spec = [InputSpec(shape=((batch_size,) + ())),
+                           InputSpec(shape=([batch_size].extend(self.units)))]
+        self.output_dim = (self.channels, self.units)
+
+        self.states = [None, None]
+        if self.stateful:
+            self.reset_states()
+        kernel_shape = self.input_dim + (self.units * 4,)
+        self.kernel = self.add_weight(kernel_shape,
+                                      name='kernel',
+                                      initializer=self.kernel_initializer,
+                                      regularizer=self.kernel_regularizer,
+                                      constraint=self.kernel_constraint)
+
+        recurrent_shape = (self.channels, self.units, self.units * 4)
+        self.recurrent_kernel = self.add_weight(
+            recurrent_shape,
+            name='recurrent_kernel',
+            initializer=self.recurrent_initializer,
+            regularizer=self.recurrent_regularizer,
+            constraint=self.recurrent_constraint)
+
+        bias_shape = (self.channels, self.units * 4)
+        if self.use_bias:
+            self.bias = self.add_weight((self.channels, self.units * 4),
+                                        name='bias',
+                                        initializer=self.bias_initializer,
+                                        regularizer=self.bias_regularizer,
+                                        constraint=self.bias_constraint)
+            if self.unit_forget_bias:
+                bias_value = np.zeros(bias_shape)
+                bias_value[:, self.units: self.units * 2] = 1.
+                K.set_value(self.bias, bias_value)
+        else:
+            self.bias = None
+
+        self.kernel_i = self.kernel[:, :, :, :self.units]
+        self.kernel_f = self.kernel[:, :, :, self.units: self.units * 2]
+        self.kernel_c = self.kernel[:, :, :, self.units * 2: self.units * 3]
+        self.kernel_o = self.kernel[:, :, :, self.units * 3:]
+
+        self.recurrent_kernel_i = self.recurrent_kernel[:, :, :self.units]
+        self.recurrent_kernel_f = self.recurrent_kernel[:, :, self.units: self.units * 2]
+        self.recurrent_kernel_c = self.recurrent_kernel[:, :, self.units * 2: self.units * 3]
+        self.recurrent_kernel_o = self.recurrent_kernel[:, :, self.units * 3:]
+
+        if self.use_bias:
+            self.bias_i = self.bias[:, self.units]
+            self.bias_f = self.bias[:, self.units: self.units * 2]
+            self.bias_c = self.bias[:, self.units * 2: self.units * 3]
+            self.bias_o = self.bias[:, self.units * 3:]
+        else:
+            self.bias_i = None
+            self.bias_f = None
+            self.bias_c = None
+            self.bias_o = None
+        self.built = True
+
+    # TODO: Modify the compute_output_shape, get_initial_states, and reset_states
+    # TODO: appropriately for this Channelized LSTM
+    def compute_output_shape(self, input_shape):
+        if isinstance(input_shape, list):
+            input_shape = input_shape[0]
+        if self.return_sequences:
+            return input_shape
+        else:
+            return input_shape[0], input_shape[2], input_shape[3], input_shape[4]
+
+    def get_initial_states(self, inputs):
+        # (samples, timesteps, rows, cols, filters)
+        initial_state = K.zeros_like(inputs)
+        # (samples, rows, cols, filters)
+        initial_state = K.sum(initial_state, axis=1)
+        shape = list(self.kernel_shape)
+        shape[-1] = self.filters
+        initial_state = self.input_conv(initial_state,
+                                        K.zeros(tuple(shape)),
+                                        padding=self.padding)
+
+        initial_states = [initial_state for _ in range(2)]
+        return initial_states
+
+    def reset_states(self):
+        if not self.stateful:
+            raise RuntimeError('Layer must be stateful.')
+        input_shape = self.input_spec.shape
+        output_shape = self.compute_output_shape(input_shape)
+        if not input_shape[0]:
+            raise ValueError('If a RNN is stateful, a complete '
+                             'input_shape must be provided '
+                             '(including batch size). '
+                             'Got input shape: ' + str(input_shape))
+
+        if self.return_sequences:
+            out_row, out_col, out_filter = output_shape[2:]
+        else:
+            out_row, out_col, out_filter = output_shape[1:]
+
+        if hasattr(self, 'states'):
+            K.set_value(self.states[0],
+                        np.zeros((input_shape[0],
+                                  out_row, out_col, out_filter)))
+            K.set_value(self.states[1],
+                        np.zeros((input_shape[0],
+                                  out_row, out_col, out_filter)))
+        else:
+            self.states = [K.zeros((input_shape[0],
+                                    out_row, out_col, out_filter)),
+                           K.zeros((input_shape[0],
+                                    out_row, out_col, out_filter))]
+
+    def get_constants(self, inputs, training=None):
+        constants = []
+        if self.implementation == 0 and 0 < self.dropout < 1:
+            ones = K.zeros_like(inputs)
+            ones = K.sum(ones, axis=1)
+            ones += 1
+
+            def dropped_inputs():
+                return K.dropout(ones, self.dropout)
+
+            dp_mask = [K.in_train_phase(dropped_inputs,
+                                        ones,
+                                        training=training) for _ in range(4)]
+            constants.append(dp_mask)
+        else:
+            constants.append([K.cast_to_floatx(1.) for _ in range(4)])
+
+        if 0 < self.recurrent_dropout < 1:
+            shape = list(self.kernel_shape)
+            shape[-1] = self.filters
+            ones = K.zeros_like(inputs)
+            ones = K.sum(ones, axis=1)
+            ones = self.input_conv(ones, K.zeros(shape),
+                                   padding=self.padding)
+            ones += 1.
+
+            def dropped_inputs():
+                return K.dropout(ones, self.recurrent_dropout)
+
+            rec_dp_mask = [K.in_train_phase(dropped_inputs,
+                                            ones,
+                                            training=training) for _ in range(4)]
+            constants.append(rec_dp_mask)
+        else:
+            constants.append([K.cast_to_floatx(1.) for _ in range(4)])
+        return constants
+
+    def preprocess_input(self, x, training=None):
+        """
+        Preprocess first time-step to be true to the EMA equation of EMA(0) = input(0)
+        Rather than EMA(0) = 1.0/tao * input(0)
+        """
+        # change_first_input = np.ones(shape=x.get_shape().as_list())
+        # change_first_input[:, 0, :] *= self.tao
+        return x
+
+    def step(self, inputs, states):
+        h_tm1 = states[0]
+        c_tm1 = states[1]
+        dp_mask = states[2]
+        rec_dp_mask = states[3]
+
+        # Inputs: Batchsize x width x height x channels
+        # input kernel: width x height x channels x units*4
+        z = tf.tensordot(inputs * dp_mask[0], self.kernel, ((1, 2), (0, 1)))
+
+        # h_tm1: channels x units
+        # recurrent kernel: channels x units x units*4
+        z += tf.tensordot(h_tm1 * rec_dp_mask[0], self.recurrent_kernel, ((1), (1)))
+
+        z0 = z[:, :, :, :self.units]
+        z1 = z[:, :, :, self.units: self.units * 2]
+        z2 = z[:, :, :, self.units * 2: self.units * 3]
+        z3 = z[:, :, :, self.units * 3:]
+
+        i = self.recurrent_activation(z0)
+        f = self.recurrent_activation(z1)
+        c = f * c_tm1 + i * self.activation(z2)
+        o = self.recurrent_activation(z3)
+
+        h = o * self.activation(c)
+        if 0 < self.dropout + self.recurrent_dropout:
+            h._uses_learning_phase = True
+        return h, [h, c]
+
+
+class PerChannelLSTM(Recurrent):
+
+    def __init__(self, units,
+                 activation='tanh',
+                 recurrent_activation='hard_sigmoid',
+                 use_bias=True,
+                 kernel_initializer='glorot_uniform',
+                 recurrent_initializer='orthogonal',
+                 bias_initializer='zeros',
+                 unit_forget_bias=True,
+                 kernel_regularizer=None,
+                 recurrent_regularizer=None,
+                 bias_regularizer=None,
+                 activity_regularizer=None,
+                 kernel_constraint=None,
+                 recurrent_constraint=None,
+                 bias_constraint=None,
+                 dropout=0.,
+                 recurrent_dropout=0.,
+                 **kwargs):
+        self.units = units
+        self.activation = activations.get(activation)
+        self.recurrent_activation = activations.get(recurrent_activation)
+        self.use_bias = use_bias
+
+        self.kernel_initializer = initializers.get(kernel_initializer)
+        self.recurrent_initializer = initializers.get(recurrent_initializer)
+        self.bias_initializer = initializers.get(bias_initializer)
+        self.unit_forget_bias = unit_forget_bias
+
+        self.kernel_regularizer = regularizers.get(kernel_regularizer)
+        self.recurrent_regularizer = regularizers.get(recurrent_regularizer)
+        self.bias_regularizer = regularizers.get(bias_regularizer)
+        self.activity_regularizer = regularizers.get(activity_regularizer)
+
+        self.kernel_constraint = constraints.get(kernel_constraint)
+        self.recurrent_constraint = constraints.get(recurrent_constraint)
+        self.bias_constraint = constraints.get(bias_constraint)
+
+        self.dropout = min(1., max(0., dropout))
+        self.recurrent_dropout = min(1., max(0., recurrent_dropout))
+        self.channel_i = 3  # Expecting row x channels
+        self.length_i = 2
+        super(PerChannelLSTM, self).__init__(**kwargs)
+        self.input_spec = InputSpec(ndim=4)
+
+    def build(self, input_shape):
+        if isinstance(input_shape, list):
+            input_shape = input_shape[0]
+
+        batch_size = input_shape[0] if self.stateful else None
+        self.input_dim = input_shape[2:] # Default will be length x channel
+        self.channels = self.input_dim[self.channel_i]
+
+        # NB: Not sure about the shapes here. Is keras using these specs
+        # NB: Somewhere internally?
+        self.input_spec = InputSpec(shape=(([batch_size, None].extend(self.input_dim))))
+        self.state_spec = [InputSpec(shape=((batch_size,) + ())),
+                           InputSpec(shape=([batch_size].extend(self.units)))]
+        self.output_dim = (self.channels, self.units)
+
+        self.states = [None, None]
+        if self.stateful:
+            self.reset_states()
+        self.kernel_shape = self.input_dim + (self.units * 4,)
+        self.kernel = self.add_weight(self.kernel_shape,
+                                      name='kernel',
+                                      initializer=self.kernel_initializer,
+                                      regularizer=self.kernel_regularizer,
+                                      constraint=self.kernel_constraint)
+
+        self.recurrent_shape = (self.channels, self.units, self.units * 4)
+        self.recurrent_kernel = self.add_weight(
+            self.recurrent_shape,
+            name='recurrent_kernel',
+            initializer=self.recurrent_initializer,
+            regularizer=self.recurrent_regularizer,
+            constraint=self.recurrent_constraint)
+
+        bias_shape = (self.channels, self.units * 4)
+        if self.use_bias:
+            self.bias = self.add_weight((self.channels, self.units * 4),
+                                        name='bias',
+                                        initializer=self.bias_initializer,
+                                        regularizer=self.bias_regularizer,
+                                        constraint=self.bias_constraint)
+            if self.unit_forget_bias:
+                bias_value = np.zeros(bias_shape)
+                bias_value[:, self.units: self.units * 2] = 1.
+                K.set_value(self.bias, bias_value)
+        else:
+            self.bias = None
+
+        self.kernel_i = self.kernel[:, :, :self.units]
+        self.kernel_f = self.kernel[:, :, self.units: self.units * 2]
+        self.kernel_c = self.kernel[:, :, self.units * 2: self.units * 3]
+        self.kernel_o = self.kernel[:, :, self.units * 3:]
+
+        self.recurrent_kernel_i = self.recurrent_kernel[:, :, :self.units]
+        self.recurrent_kernel_f = self.recurrent_kernel[:, :, self.units: self.units * 2]
+        self.recurrent_kernel_c = self.recurrent_kernel[:, :, self.units * 2: self.units * 3]
+        self.recurrent_kernel_o = self.recurrent_kernel[:, :, self.units * 3:]
+
+        if self.use_bias:
+            self.bias_i = self.bias[:, self.units]
+            self.bias_f = self.bias[:, self.units: self.units * 2]
+            self.bias_c = self.bias[:, self.units * 2: self.units * 3]
+            self.bias_o = self.bias[:, self.units * 3:]
+        else:
+            self.bias_i = None
+            self.bias_f = None
+            self.bias_c = None
+            self.bias_o = None
+        self.built = True
+
+    # TODO: Modify the compute_output_shape, get_initial_states, and reset_states
+    # TODO: appropriately for this Channelized LSTM
+    def compute_output_shape(self, input_shape):
+        if isinstance(input_shape, list):
+            input_shape = input_shape[0]
+        if self.return_sequences:
+            return input_shape
+        else:
+            return input_shape[0], input_shape[self.channel_i], self.units
+
+    def get_initial_states(self, inputs):
+        # Build output layer of samples x output_dim
+        # (samples, timesteps, rows, channels)
+        initial_state = K.zeros_like(inputs)
+        # (samples, rows, channels)
+        initial_state = K.sum(initial_state, axis=1)
+        initial_state = K.sum(initial_state, axis=1)
+        initial_state = K.expand_dims(initial_state, axis=-1)
+        initial_states = [initial_state for _ in self.states]
+        return initial_states
+
+    def preprocess_input(self, inputs, training=None):
+        if self.implementation == 0:
+            input_shape = K.int_shape(inputs)
+            input_dim = input_shape[2:]
+            timesteps = input_shape[1]
+
+            x_i = _time_distributed_dense(inputs, self.kernel_i, self.bias_i,
+                                          self.dropout, input_dim, self.units,
+                                          timesteps, training=training)
+            x_f = _time_distributed_dense(inputs, self.kernel_f, self.bias_f,
+                                          self.dropout, input_dim, self.units,
+                                          timesteps, training=training)
+            x_c = _time_distributed_dense(inputs, self.kernel_c, self.bias_c,
+                                          self.dropout, input_dim, self.units,
+                                          timesteps, training=training)
+            x_o = _time_distributed_dense(inputs, self.kernel_o, self.bias_o,
+                                          self.dropout, input_dim, self.units,
+                                          timesteps, training=training)
+            return K.concatenate([x_i, x_f, x_c, x_o], axis=2)
+        else:
+            return inputs
+
+    def reset_states(self, states_value=None):
+        if not self.stateful:
+            raise RuntimeError('Layer must be stateful.')
+        input_shape = self.input_spec.shape
+        if not input_shape[0]:
+            raise ValueError('If a RNN is stateful, a complete '
+                             'input_shape must be provided '
+                             '(including batch size). '
+                             'Got input shape: ' + str(input_shape))
+
+
+        # NB: This might be units * 4
+        if hasattr(self, 'states'):
+            K.set_value(self.states[0],
+                        np.zeros((input_shape[0],
+                                  self.channels, self.units)))
+            K.set_value(self.states[1],
+                        np.zeros((input_shape[0],
+                                  self.channels, self.units)))
+        else:
+            self.states = [K.zeros((input_shape[0],
+                                    self.channels, self.units)),
+                           K.zeros((input_shape[0],
+                                    self.channels, self.units))]
+
+    def get_constants(self, inputs, training=None):
+        constants = []
+        if 0 < self.dropout < 1:
+            ones = K.zeros_like(inputs)
+            ones = K.sum(ones, axis=1)
+            ones += 1
+
+            def dropped_inputs():
+                return K.dropout(ones, self.dropout)
+
+            dp_mask = [K.in_train_phase(dropped_inputs,
+                                        ones,
+                                        training=training) for _ in range(4)]
+            constants.append(dp_mask)
+        else:
+            constants.append([K.cast_to_floatx(1.) for _ in range(4)])
+
+        if 0 < self.recurrent_dropout < 1:
+
+            ones = K.ones(shape=self.recurrent_shape)
+
+            def dropped_inputs():
+                return K.dropout(ones, self.recurrent_dropout)
+
+            rec_dp_mask = [K.in_train_phase(dropped_inputs,
+                                            ones,
+                                            training=training) for _ in range(4)]
+            constants.append(rec_dp_mask)
+        else:
+            constants.append([K.cast_to_floatx(1.) for _ in range(4)])
+        return constants
+
+
+    def step(self, inputs, states):
+        h_tm1 = states[0]
+        c_tm1 = states[1]
+        dp_mask = states[2]
+        rec_dp_mask = states[3]
+
+        # Inputs: Batchsize x length x channel
+        # input kernel: length x channels x units*4
+        # for each channel_i, we want batchsize x length_i dot length_i x unit * 4
+        # resulting calculation: batchsize x units*4 x channel
+
+        z = tf.tensordot(inputs * dp_mask[0], self.kernel, ((self.length_i,), (self.length_i - 1,)))
+
+        # h_tm1: channels x units
+        # recurrent kernel: channels x units x units*4
+        z += tf.tensordot(h_tm1 * rec_dp_mask[0], self.recurrent_kernel, ((1), (1)))
+
+        z0 = z[:, :, :self.units]
+        z1 = z[:, :, self.units: self.units * 2]
+        z2 = z[:, :, self.units * 2: self.units * 3]
+        z3 = z[:, :, self.units * 3:]
+
+        i = self.recurrent_activation(z0)
+        f = self.recurrent_activation(z1)
+        c = f * c_tm1 + i * self.activation(z2)
+        o = self.recurrent_activation(z3)
+
+        h = o * self.activation(c)
+        if 0 < self.dropout + self.recurrent_dropout:
+            h._uses_learning_phase = True
+        return h, [h, c]
+
+
 def Lenet(input_layer):
     x = TimeDistributed(Convolution2D(filters=6, kernel_size=(5, 5),
                                       strides=(1, 1), activation='linear'))(input_layer)
@@ -183,3 +681,21 @@ def NiN(input_layer):
     x = Block(x, 192, (1, 1), (1, 1))
     x = TimeDistributed(Flatten())(x)
     return x
+
+
+def axis_element_wise_multiplication(t1, t2, which_axis):
+    """
+    Gets each tensor along a particular axis of t1, perform element-wise multiplication of those
+    slices with t2 and returns the resulting matricies stacked.
+    :param t1: First tensor. Should be 1 rank greater than t2
+    :param t2: Tensor to element-wise multiply each slice of t1 by
+    :param which_axis: Axis of t1 to slice along
+    :return: Element-wise slice multiplication of t1 and t2. Should have shape of t1
+    """
+    # assert len(K.int_shape(t1)) == len(K.int_shape(t2)) + 1, "rank(t1) should be rank(t2) + 1"
+    slices = tf.unstack(t1, axis=which_axis)
+    # assert K.int_shape(slices[0]) == K.int_shape(t2), "Slices of t1 were not the same shape as t2"
+    multiplies = []
+    for s in slices:
+        multiplies.append(t2 * s)
+    return tf.stack(multiplies, axis=2)
