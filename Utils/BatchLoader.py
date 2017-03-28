@@ -29,8 +29,12 @@ class KTHDataLoader:
         self.batch_size = batch_size
         self.num_steps = num_steps
 
+        kth_splits = read_kth_splits()
+
         video_data = []
         video_labels = []
+        video_data_validation = []
+        video_labels_validation = []
 
         seen_labels = {}
         if not os.path.isdir("./Processed_KTH_Data"):
@@ -51,8 +55,13 @@ class KTHDataLoader:
 
             number_of_slices = math.floor(frameCount / num_steps)
             split_vid_data = [np.array(vid[i * num_steps:(i + 1) * num_steps]) for i in range(number_of_slices)]
-            video_data += split_vid_data
-            video_labels += [np.ones(num_steps) * seen_labels[vid_label]] * len(split_vid_data)
+
+            if kth_splits[vid_label][npfile[:-4]] == 1:
+                video_data += split_vid_data
+                video_labels += [np.ones(num_steps) * seen_labels[vid_label]] * len(split_vid_data)
+            else:
+                video_data_validation += split_vid_data
+                video_labels_validation += [np.ones(num_steps) * seen_labels[vid_label]] * len(split_vid_data)
 
         # Get the width, height, and channel properties from the videos
         self.width = video_data[0].shape[2]
