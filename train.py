@@ -23,7 +23,7 @@ if __name__=="__main__":
 
     parser = argparse.ArgumentParser(description='Train a ED-RNN on video data')
     # data
-    parser.add_argument('--data_dir', type=str, default='./Debug_Data/', help='KTHData directory')
+    parser.add_argument('--data_dir', type=str, default='./KTHData/', help='KTHData directory')
     # model params
     parser.add_argument('--rnn_size', type=int, default=127, help='size of RNN cell internal state')
     parser.add_argument('--num_rnn_layers', type=int, default=1, help='number of layers in the LSTM')
@@ -34,7 +34,7 @@ if __name__=="__main__":
     parser.add_argument('--learning_rate', type=float, default=1, help='starting learning rate')
     parser.add_argument('--batch_norm', type=int, default=0, help='use batch normalization over input (1=yes)')
     parser.add_argument('--num_steps', type=int, default=20, help='number of timesteps to unroll for')
-    parser.add_argument('--batch_size', type=int, default=3, help='number of sequences to train on in parallel')
+    parser.add_argument('--batch_size', type=int, default=30, help='number of sequences to train on in parallel')
     parser.add_argument('--max_epochs', type=int, default=25, help='number of full passes through the training data')
     parser.add_argument('--gpu', type=int, default=0, help='Which gpu are you running on? -1 for cpu, you lame')
     # bookkeeping
