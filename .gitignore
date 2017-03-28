@@ -8,6 +8,7 @@ model/__pycache__/
 results_data/
 *.avi
 Debug_Data
+Processed_KTH_Data
 
 ### Windows template
 # Windows image file caches
