@@ -24,7 +24,6 @@ def read_kth_splits():
     return split_dict
 
 
-
 class KTHDataLoader:
     def __init__(self, data_path, batch_size, num_steps):
         self.batch_size = batch_size
