@@ -1,9 +1,10 @@
 from keras import backend as K
-from keras.layers import Input, TimeDistributed, Dense, LSTM, Convolution2D, BatchNormalization, MaxPool2D, Flatten
+from keras.layers import Input, TimeDistributed, Dense, LSTM, Convolution2D, BatchNormalization, MaxPool2D, \
+    Flatten, Reshape
 from keras.models import Model
 from keras.optimizers import Adam
 from keras.metrics import sparse_categorical_accuracy
-from .keras_layers import Lenet, NiN, ED_EMA
+from .keras_layers import Lenet, NiN, ED_EMA, CLSTM, PerChannelLSTM
 from .Callbacks import *
 
 CPU = -1
@@ -48,7 +49,7 @@ class ED_RNN:
 
             if opt.use_edema == 1:
                 x = ED_EMA(shape=(opt.batch_size, opt.height, opt.width, opt.num_channels),
-                           tao=1.5, v_threshold=0.05, beta=2.0, return_sequences=True)(x)
+                           tao=1.5, v_threshold=0.003, beta=2.0, return_sequences=True)(x)
 
             if opt.network.lower() == "lenet":
                 x = Lenet(x)
@@ -61,14 +62,20 @@ class ED_RNN:
                                                       strides=CONV_STRIDES[cl], activation='relu'))(x)
                     x = TimeDistributed(MaxPool2D(pool_size=(CONV_POOL[cl])))(x)
 
+            print("X SHAPE:", x.shape)
+            # For regular LSTM
+            x = TimeDistributed(Flatten())(x)
+            # For the PerChannelLSTM:
+            # x = TimeDistributed(Reshape(target_shape=(K.int_shape(x)[2] * K.int_shape(x)[3], K.int_shape(x)[4])))(x)
             for rl in range(opt.num_rnn_layers):
                 x = LSTM(self.rnn_size, return_sequences=True)(x)
+                # x = PerChannelLSTM(self.rnn_size, return_sequences=True)(x)
 
             self.output = TimeDistributed(Dense(input_dim=self.rnn_size,
                                                 output_dim=opt.num_classes, activation='softmax'))(x)
             self.model = Model(input=self.inputs, output=self.output)
             self.model.summary()
-            self.optimizer = Adam(lr=opt.learning_rate)
+            self.optimizer = Adam(lr=opt.learning_rate, decay=0.05)
             self.model.compile(loss='sparse_categorical_crossentropy', optimizer=self.optimizer,
                                metrics=[sparse_categorical_accuracy])
             self.write_dir = '../results_data/'

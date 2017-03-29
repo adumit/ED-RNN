@@ -666,7 +666,6 @@ def Lenet(input_layer):
     x = TimeDistributed(BatchNormalization())(x)
     x = Activation("relu")(x)
     x = TimeDistributed(MaxPool2D(pool_size=(2, 2), strides=(2, 2)))(x)
-    x = TimeDistributed(Flatten())(x)
     return x
 
 
@@ -691,7 +690,6 @@ def NiN(input_layer):
     x = TimeDistributed(Dropout(0.2))(x)
     x = Block(x, 192, (3, 3), (1, 1))
     x = Block(x, 192, (1, 1), (1, 1))
-    x = TimeDistributed(Flatten())(x)
     return x
 
 
