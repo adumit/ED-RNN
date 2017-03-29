@@ -46,10 +46,11 @@ class EMA(Recurrent):
 
 
 class ED_EMA(Recurrent):
-    def __init__(self, shape, tao=1.5, v_threshold=0.05, beta=2.0, **kwargs):
+    def __init__(self, shape, tao=1.5, v_pos_threshold=0.003, v_neg_threshold=-0.003, beta=2.0, **kwargs):
         self.shape = shape
         self.tao = tao
-        self.v_threshold = v_threshold
+        self.v_pos_threshold = v_pos_threshold
+        self.v_neg_threshold = v_neg_threshold
         self.beta = beta
         super(ED_EMA, self).__init__(**kwargs)
         self.input_spec = InputSpec(ndim=5)
@@ -69,7 +70,7 @@ class ED_EMA(Recurrent):
 
         self.input_dim = input_dim
         self.output_dim = input_dim
-        self.states = [None, None]
+        self.states = [None]
         if self.stateful:
             self.reset_states()
         self.built = True
@@ -129,9 +130,9 @@ class ED_EMA(Recurrent):
         if isinstance(input_shape, list):
             input_shape = input_shape[0]
         if self.return_sequences:
-            return input_shape
+            return input_shape[0], input_shape[1], input_shape[2], input_shape[3], 2*input_shape[4]
         else:
-            return input_shape[0], input_shape[2], input_shape[3], input_shape[4]
+            return input_shape[0], input_shape[2], input_shape[3], 2*input_shape[4]
 
     def preprocess_input(self, x, training=None):
         """
@@ -143,17 +144,18 @@ class ED_EMA(Recurrent):
         return x
 
     def step(self, x, states):
-        self.prev_output = prev_output = states[0]
-        self.prev_ema = prev_ema = states[1]
+        self.prev_ema = prev_ema = states[0]
 
         ema = (1.0 - 1.0/self.tao_mat) * prev_ema + 1.0/self.tao_mat * x
-        output = (x / ema)**self.beta_mat - (1.0 + self.v_threshold)
-        if self.v_threshold > 0.0:
-            output = relu(output, 0.0)
-        else:
-            output = relu(-output, 0.0)
 
-        return output, [output, ema]
+        pos_output = (x / ema)**self.beta_mat - (1.0 + self.v_pos_threshold)
+        pos_output = relu(pos_output, 0.0)
+        neg_output = (x / ema)**self.beta_mat - (1.0 - self.v_neg_threshold)
+        neg_output = relu(-neg_output, 0.0)
+
+        output = K.concatenate([pos_output, neg_output], axis=3)
+
+        return output, [ema]
 
 
 class CLSTM(Recurrent):

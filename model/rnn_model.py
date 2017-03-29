@@ -45,11 +45,13 @@ class ED_RNN:
 
             self.inputs = Input(batch_shape=(opt.batch_size, opt.num_steps, opt.height, opt.width, opt.num_channels),
                                 dtype='float32', name='video')
+            # TODO: For non-KTH dataset, make sure this doesn't go to only 1 channel
             x = self.inputs
+            print(K.int_shape(x))
 
             if opt.use_edema == 1:
-                x = ED_EMA(shape=(opt.batch_size, opt.height, opt.width, opt.num_channels),
-                           tao=1.5, v_threshold=0.003, beta=2.0, return_sequences=True)(x)
+                x = ED_EMA(shape=(opt.batch_size, opt.height, opt.width, K.int_shape(x)[4]),
+                           tao=1.5, v_pos_threshold=0.003, v_neg_threshold=0.003, beta=2.0, return_sequences=True)(x)
 
             if opt.network.lower() == "lenet":
                 x = Lenet(x)
