@@ -4,10 +4,20 @@ from keras import backend as K
 from keras import activations
 from keras.layers.recurrent import Recurrent, _time_distributed_dense
 from keras.layers import Input, TimeDistributed, Dense, LSTM, Convolution2D, BatchNormalization, MaxPool2D, \
-    Flatten, Dropout, AveragePooling2D, Activation, InputSpec, initializers, regularizers, constraints, convolutional_recurrent
+    Flatten, Dropout, AveragePooling2D, Activation, InputSpec, initializers, regularizers, constraints, Layer
 from keras.models import Model
 from keras.optimizers import Adam
 from keras.activations import relu
+
+
+class LayerLambdas:
+    @staticmethod
+    def KTHSlice(x):
+        return x[:, :, :, :, 0:1]
+
+    @staticmethod
+    def KTHSlice_Output_Shape(x):
+        return x[0], x[1], x[2], x[3], 1
 
 
 class EMA(Recurrent):
@@ -673,22 +683,22 @@ def Lenet(input_layer):
 
 def Block(input_layer, num_filters, conv_size, conv_strides):
     x = TimeDistributed(Convolution2D(filters=num_filters, kernel_size=conv_size, strides=conv_strides,
-                                      activation="linear"))(input_layer)
+                                      activation="linear", padding="same"))(input_layer)
     x = TimeDistributed(BatchNormalization())(x)
     x = Activation("relu")(x)
     return x
 
 
 def NiN(input_layer):
-    x = Block(input_layer, 192, (5, 5), (1, 1))
+    x = Block(input_layer, 192, (5, 5), (2, 2))
     x = Block(x, 160, (1, 1), (1, 1))
     x = Block(x, 96, (1, 1), (1, 1))
-    x = TimeDistributed(MaxPool2D(pool_size=(3, 3), strides=(2, 2)))(x)
+    x = TimeDistributed(MaxPool2D(pool_size=(3, 3), strides=(2, 2), padding="same"))(x)
     x = TimeDistributed(Dropout(0.2))(x)
-    x = Block(x, 192, (5, 5), (1, 1))
+    x = Block(x, 192, (5, 5), (2, 2))
     x = Block(x, 192, (1, 1), (1, 1))
     x = Block(x, 192, (1, 1), (1, 1))
-    x = TimeDistributed(AveragePooling2D(pool_size=(3, 3), strides=(2, 2)))(x)
+    x = TimeDistributed(AveragePooling2D(pool_size=(3, 3), strides=(2, 2), padding="same"))(x)
     x = TimeDistributed(Dropout(0.2))(x)
     x = Block(x, 192, (3, 3), (1, 1))
     x = Block(x, 192, (1, 1), (1, 1))
