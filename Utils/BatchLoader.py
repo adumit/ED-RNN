@@ -1,5 +1,6 @@
 """
 Must have openCV for python, downloaded here: http://www.lfd.uci.edu/~gohlke/pythonlibs/#opencv
+KTH dataset can be found here: http://www.nada.kth.se/cvap/actions/
 """
 
 import cv2

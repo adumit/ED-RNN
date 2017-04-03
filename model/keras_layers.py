@@ -19,6 +19,22 @@ class LayerLambdas:
     def KTHSlice_Output_Shape(x):
         return x[0], x[1], x[2], x[3], 1
 
+    @staticmethod
+    def ChannelizedLSTM(input_layer, num_layers, rnn_size):
+        """ This model assumes that the channel dim is the fifth dimension """
+        slices = []
+        for i in range(K.int_shape(input_layer)[4]):
+            single_slice = tf.slice(input_layer, [0, 0, 0, 0, i], [-1, -1, -1, -1, 1])
+            x = TimeDistributed(Flatten())(single_slice)
+            for _ in range(num_layers):
+                x = LSTM(rnn_size, return_sequences=True)(x)
+            expanded = K.expand_dims(x, axis=-1)
+            slices.append(expanded)
+            print(expanded)
+        stacked = K.concatenate(slices, axis=-1)
+        print(stacked)
+        return stacked
+
 
 class EMA(Recurrent):
     def __init__(self, tao=1.5, **kwargs):
@@ -701,7 +717,7 @@ def NiN(input_layer):
     x = TimeDistributed(AveragePooling2D(pool_size=(3, 3), strides=(2, 2), padding="same"))(x)
     x = TimeDistributed(Dropout(0.2))(x)
     x = Block(x, 192, (3, 3), (1, 1))
-    x = Block(x, 192, (1, 1), (1, 1))
+    x = Block(x, 2, (1, 1), (1, 1))
     return x
 
 
