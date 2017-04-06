@@ -94,9 +94,11 @@ class ScaledLogReturn(Recurrent):
         super(ScaledLogReturn, self).__init__(**kwargs)
 
     def tao_init(self, shape, dtype=None):
+        """ From EDEMA """
         return K.variable(np.ones(shape=shape, dtype=dtype) * self.tao)
 
     def beta_init(self, shape, dtype=None):
+        """ From EDEMA """
         return K.variable(np.ones(shape=shape, dtype=dtype) * self.beta)
 
     def build(self, input_shape):
@@ -107,9 +109,9 @@ class ScaledLogReturn(Recurrent):
         self.tao_mat = self.add_weight(shape=self.shape, initializer=self.tao_init)
         self.states = [None]
 
-        if self.initial_weights is not None:
-            self.set_weights(self.initial_weights)
-            del self.initial_weights
+        if self.stateful:
+            self.reset_states()
+
         self.built = True
 
     def preprocess_input(self, x, training=None):
@@ -189,11 +191,11 @@ class ScaledLogReturn(Recurrent):
     def step(self, x, states):
         self.prev_output = prev_output = states[0]
 
+        # TODO: What happens if tao_mat goes to zero? o.O
         ema = (1.0 - 1.0/self.tao_mat) * prev_output + 1.0/self.tao_mat * x
         output = self.beta * tf.log(ema)
 
         return output, [output]
-
 
 
 class ED_EMA(Recurrent):
