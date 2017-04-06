@@ -53,7 +53,7 @@ class ED_RNN:
 
             if opt.use_edema == 1:
                 x = ED_EMA(shape=(opt.height, opt.width, K.int_shape(x)[4]),
-                           tao=1.5, v_pos_threshold=0.03, v_neg_threshold=0.03, beta=2.0, return_sequences=True)(x)
+                           tao=1.5, v_pos_threshold=0.003, v_neg_threshold=0.003, beta=2.0, return_sequences=True)(x)
 
 
             if opt.network.lower() == "lenet":
@@ -67,19 +67,21 @@ class ED_RNN:
                                                       strides=CONV_STRIDES[cl], activation='relu'))(x)
                     x = TimeDistributed(MaxPool2D(pool_size=(CONV_POOL[cl])))(x)
 
-            print("X SHAPE:", x.shape)
             # For regular LSTM
-            # x = TimeDistributed(Flatten())(x)
+            x = TimeDistributed(Flatten())(x)
             # For the PerChannelLSTM user created layer:
             # x = TimeDistributed(Reshape(target_shape=(K.int_shape(x)[2] * K.int_shape(x)[3], K.int_shape(x)[4])))(x)
-            # for rl in range(opt.num_rnn_layers):
-                # x = LSTM(self.rnn_size, return_sequences=True)(x)
+            print("X SHAPE:", x.shape)
+            for rl in range(opt.num_rnn_layers):
+                # Don't return states for the last layer
+                if rl == opt.num_rnn_layers - 1:
+                    x = LSTM(self.rnn_size, return_sequences=False)(x)
+                else:
+                    x = LSTM(self.rnn_size, return_sequences=True)(x)
                 # x = PerChannelLSTM(self.rnn_size, return_sequences=True)(x)
-            x = LayerLambdas.ChannelizedLSTM(x, opt.num_rnn_layers, opt.rnn_size)
-            x = TimeDistributed(Flatten())(x)
-
-            self.output = TimeDistributed(Dense(input_dim=self.rnn_size,
-                                                output_dim=opt.num_classes, activation='softmax'))(x)
+            # x = LayerLambdas.ChannelizedLSTM(x, opt.num_rnn_layers, opt.rnn_size)
+            # x = TimeDistributed(Flatten())(x)
+            self.output = Dense(input_dim=self.rnn_size, units=opt.num_classes, activation='softmax')(x)
             self.model = Model(input=self.inputs, output=self.output)
             self.model.summary()
             self.optimizer = Adam(lr=opt.learning_rate, decay=0.05)
