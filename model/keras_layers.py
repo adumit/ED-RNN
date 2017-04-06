@@ -35,6 +35,21 @@ class LayerLambdas:
         print(stacked)
         return stacked
 
+    @staticmethod
+    def OnOffThreshold(x, pos_threshold, neg_threshold):
+        pos_output = x + (1.0 + pos_threshold)
+        pos_output = relu(pos_output, 0.0)
+        neg_output = x - (1.0 - neg_threshold)
+        neg_output = relu(-neg_output, 0.0)
+
+        output = K.concatenate([pos_output, neg_output], axis=3)
+
+    @staticmethod
+    def OnOffThreshold_OutputShape(x):
+        """ 5 dimension? Batch x Time x l x w x c """
+        return x[0], x[1], x[2], x[3], x[4] * 2
+
+
 
 class EMA(Recurrent):
     def __init__(self, tao=1.5, **kwargs):
@@ -69,6 +84,116 @@ class EMA(Recurrent):
         output = (1.0 - 1.0/self.tao) * prev_output + 1.0/self.tao * x
 
         return output, [output]
+
+class ScaledLogReturn(Recurrent):
+    def __init__(self, shape, tao=1.5, **kwargs):
+        self.shape = shape
+        self.tao = tao
+        self.prev_output = None
+        self.input_spec = False
+        super(ScaledLogReturn, self).__init__(**kwargs)
+
+    def tao_init(self, shape, dtype=None):
+        return K.variable(np.ones(shape=shape, dtype=dtype) * self.tao)
+
+    def beta_init(self, shape, dtype=None):
+        return K.variable(np.ones(shape=shape, dtype=dtype) * self.beta)
+
+    def build(self, input_shape):
+        input_dim = input_shape[2]
+        self.input_dim = input_dim
+        self.output_dim = input_dim
+        self.beta = self.add_weight(shape=self.shape, initializer=self.beta_init)
+        self.tao_mat = self.add_weight(shape=self.shape, initializer=self.tao_init)
+        self.states = [None]
+
+        if self.initial_weights is not None:
+            self.set_weights(self.initial_weights)
+            del self.initial_weights
+        self.built = True
+
+    def preprocess_input(self, x, training=None):
+        """
+        Preprocess first time-step to be true to the EMA equation of EMA(0) = beta * log(input(0))
+        Rather than EMA(0) = beta * log(1.0/tao * input(0))
+        """
+        # change_first_input = np.ones(shape=x.get_shape().as_list())
+        # change_first_input[:, 0, :] *= self.tao
+        # TODO: What happens if beta x is 0? or negative?
+        return self.beta * np.log(x)
+
+    def get_initial_states(self, inputs):
+        """ From the ED_EMA """
+        # build an all-zero tensor of shape (samples, output_dim)
+        in_shape = K.int_shape(inputs)
+        initial_state = K.zeros(shape=(in_shape[0], in_shape[2], in_shape[3], in_shape[4]))
+        initial_states = [initial_state for _ in range(len(self.states))]
+        return initial_states
+
+    def reset_states(self, states_value=None):
+        """ Copied from ED-EMA """
+        if not self.stateful:
+            raise AttributeError('Layer must be stateful.')
+        if not self.input_spec:
+            raise RuntimeError('Layer has never been called '
+                               'and thus has no states.')
+        batch_size = self.input_spec.shape[0]
+        if not batch_size:
+            raise ValueError('If a RNN is stateful, it needs to know '
+                             'its batch size. Specify the batch size '
+                             'of your input tensors: \n'
+                             '- If using a Sequential model, '
+                             'specify the batch size by passing '
+                             'a `batch_input_shape` '
+                             'argument to your first layer.\n'
+                             '- If using the functional API, specify '
+                             'the time dimension by passing a '
+                             '`batch_shape` argument to your Input layer.')
+        if states_value is not None:
+            if not isinstance(states_value, (list, tuple)):
+                states_value = [states_value]
+            if len(states_value) != len(self.states):
+                raise ValueError('The layer has ' + str(len(self.states)) +
+                                 ' states, but the `states_value` '
+                                 'argument passed '
+                                 'only has ' + str(len(states_value)) +
+                                 ' entries')
+        if self.states[0] is None:
+            self.states = [
+                K.zeros(np.zeros((batch_size, self.input_shape[2], self.input_shape[3], self.input_shape[4])))
+                for _ in self.states]
+            if not states_value:
+                return
+        for i, state in enumerate(self.states):
+            if states_value:
+                value = states_value[i]
+                if value.shape != np.zeros((batch_size, self.input_shape[2], self.input_shape[3], self.input_shape[4])):
+                    raise ValueError(
+                        'Expected state #' + str(i) +
+                        ' to have shape ' + str(
+                            np.zeros((batch_size, self.input_shape[2], self.input_shape[3], self.input_shape[4]))) +
+                        ' but got array with shape ' + str(value.shape))
+            else:
+                value = np.zeros((batch_size, self.input_shape[2], self.input_shape[3], self.input_shape[4]))
+            K.set_value(state, value)
+
+    def compute_output_shape(self, input_shape):
+        """ Copied from ED-EMA """
+        if isinstance(input_shape, list):
+            input_shape = input_shape[0]
+        if self.return_sequences:
+            return input_shape[0], input_shape[1], input_shape[2], input_shape[3], input_shape[4]
+        else:
+            return input_shape[0], input_shape[2], input_shape[3], input_shape[4]
+
+    def step(self, x, states):
+        self.prev_output = prev_output = states[0]
+
+        ema = (1.0 - 1.0/self.tao_mat) * prev_output + 1.0/self.tao_mat * x
+        output = self.beta * tf.log(ema)
+
+        return output, [output]
+
 
 
 class ED_EMA(Recurrent):
