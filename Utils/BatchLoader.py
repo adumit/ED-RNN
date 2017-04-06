@@ -102,7 +102,7 @@ class KTHDataLoader:
             sparse_ydata = self.batched_data[self.batch_index][1]
             ydata = np.expand_dims(sparse_ydata, axis=2)
             self.batch_index += 1
-            yield (xdata, ydata)
+            yield (xdata, ydata[:, -1, :])
 
     def get_train_data(self):
         return [x[0] for x in self.batched_data], [x[1] for x in self.batched_data]
@@ -131,4 +131,4 @@ class KTHDataLoader:
             sparse_ydata = self.validation_data[self.validation_index][1]
             ydata = np.expand_dims(sparse_ydata, axis=2)
             self.validation_index += 1
-            yield (xdata, ydata)
+            yield (xdata, ydata[:, -1, :])
