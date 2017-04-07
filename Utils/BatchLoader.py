@@ -44,7 +44,7 @@ class KTHDataLoader:
             for vid_file in os.listdir(data_path):
                 process_video("./Processed_KTH_Data_32_32/", data_path, vid_file, 32, 32)
             print("Done processing data.")
-        for npfile in os.listdir("./Processed_KTH_Data/"):
+        for npfile in os.listdir("./Processed_KTH_Data_32_32/"):
             vid_label = npfile.split("_")[1]
             if vid_label not in seen_labels:
                 if len(seen_labels) == 0:
