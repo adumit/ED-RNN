@@ -711,7 +711,7 @@ class PerChannelLSTM(Recurrent):
         # print("step 4: {}".format(K.int_shape(initial_state)))
         # initial_states = [initial_state for _ in self.states]
         # print("Inital state shape: {}".format(K.int_shape(initial_state)))
-        initial_state = K.zeros(shape=(inputs[0], self.channels, self.units))
+        initial_state = K.zeros(shape=(K.int_shape(inputs)[0], self.channels, self.units))
         initial_states = [initial_state for _ in self.states]
         return initial_states
 
