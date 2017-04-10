@@ -813,7 +813,7 @@ class PerChannelLSTM(Recurrent):
         # NOTE: Edited - Not multiplying the state by the mask `dp_mask[0]`
         # z = tf.tensordot(inputs, self.kernel, ((self.length_i + 1,), (self.length_i,)))
         # print("z shape: ", K.int_shape(z))
-        z = tf.einsum('aij,ijk->ajk', inputs, self.kernel)
+        z = tf.einsum('blc,lcf->bck', inputs, self.kernel)
         print("z shape: ", K.int_shape(z))
 
         # h_tm1: channels x units
@@ -821,7 +821,10 @@ class PerChannelLSTM(Recurrent):
         # NOTE: Edited - Not multiplying the state by the mask `rec_dp_mask[0]`
         print("Hidden state shape: ", K.int_shape(h_tm1))
         print("recurrent kernel shape: ", K.int_shape(self.recurrent_kernel))
-        z += tf.tensordot(h_tm1, self.recurrent_kernel, ((1,), (1,)))
+        r_calc = tf.einsum('cu,cuf->cf', h_tm1, self.recurrent_kernel)
+        print('r calc shape: ', K.int_shape(r_calc))
+        z += r_calc
+        # z += tf.tensordot(h_tm1, self.recurrent_kernel, ((1,), (1,)))
 
 
 
