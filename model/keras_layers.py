@@ -795,6 +795,10 @@ class PerChannelLSTM(Recurrent):
         # for each channel_i, we want batchsize x length_i dot length_i x unit * 4
         # resulting calculation: batchsize x units*4 x channel
 
+        print("Input shape: ", K.int_shape(inputs))
+        print("mask shape: ", K.int_shape(dp_mask[0]))
+        print("kernel shape:", K.int_shape(self.kernel))
+
         z = tf.tensordot(inputs * dp_mask[0], self.kernel, ((self.length_i,), (self.length_i - 1,)))
 
         # h_tm1: channels x units
