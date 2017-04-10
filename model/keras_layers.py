@@ -796,7 +796,7 @@ class PerChannelLSTM(Recurrent):
         # resulting calculation: batchsize x units*4 x channel
 
         print("Input shape: ", K.int_shape(inputs))
-        print("mask shape: ", dp_mask.shape)
+        # print("mask shape: ", dp_mask.shape)
         print("kernel shape:", K.int_shape(self.kernel))
 
         # NOTE: Edited - Not multiplying the state by the mask `dp_mask[0]`
