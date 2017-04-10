@@ -92,7 +92,7 @@ class ED_RNN:
             #     else:
             #         x = LSTM(self.rnn_size, return_sequences=True)(x)
             x = PerChannelLSTM(self.rnn_size, return_sequences=True)(x)
-            x = x[:, -1, :, :]
+            x = Lambda(LayerLambdas.LastTimestep, output_shape=LayerLambdas.LastTimestepShape)(x)
             # x = Lambda(LayerLambdas.ChannelizedLSTM,
             #            arguments={'num_layers': opt.num_rnn_layers, 'rnn_size': opt.rnn_size})(x)
             # x = LayerLambdas.ChannelizedLSTM(x, opt.num_rnn_layers, opt.rnn_size)

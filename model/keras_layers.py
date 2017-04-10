@@ -20,6 +20,13 @@ class LayerLambdas:
         return x[0], x[1], x[2], x[3], 1
 
     @staticmethod
+    def LastTimestep(x):
+        return x[:,-1,:, :]
+
+    @staticmethod
+    def LastTimestepShape(x):
+        return x[0], x[2], x[3]
+    @staticmethod
     def ChannelizedLSTM(input_layer, num_layers, rnn_size):
         """ This model assumes that the channel dim is the fifth dimension """
         slices = []
