@@ -813,7 +813,7 @@ class PerChannelLSTM(Recurrent):
         # NOTE: Edited - Not multiplying the state by the mask `dp_mask[0]`
         # z = tf.tensordot(inputs, self.kernel, ((self.length_i + 1,), (self.length_i,)))
         # print("z shape: ", K.int_shape(z))
-        z = tf.einsum('blc,lcf->bck', inputs, self.kernel)
+        z = tf.einsum('blc,lcf->bcf', inputs, self.kernel)
         print("z shape: ", K.int_shape(z))
 
         # h_tm1: channels x units
