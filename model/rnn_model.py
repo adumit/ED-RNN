@@ -69,17 +69,26 @@ class ED_RNN:
 
             # For regular LSTM
             print("X Shape: ", K.int_shape(x))
-            # x = TimeDistributed(Flatten())(x)
+            x = TimeDistributed(Flatten())(x)
             # For the PerChannelLSTM user created layer:
-            x = TimeDistributed(Reshape(target_shape=(K.int_shape(x)[2] * K.int_shape(x)[3], K.int_shape(x)[4])))(x)
-            print("X SHAPE:", K.int_shape(x))
+            # x = TimeDistributed(Reshape(target_shape=(K.int_shape(x)[2] * K.int_shape(x)[3], K.int_shape(x)[4])))(x)
+            print("X SHAPE Before LSTMS:", K.int_shape(x))
+            slices = []
+            for i in range(K.int_shape(x)[3]):  # For each channel
+                sliver = LSTM(self.rnn_size, return_sequences=False)(x[:,:,:,i])
+                expanded = K.expand_dims(sliver, axis=-1)
+                slices.append(expanded)
+            x = K.concatenate(slices, axis=-1)
+            print("After LSTMs: ", K.int_shape(x))
+
+
             # for rl in range(opt.num_rnn_layers):
             #     # Don't return states for the last layer
             #     if rl == opt.num_rnn_layers - 1:
             #         x = LSTM(self.rnn_size, return_sequences=False)(x)
             #     else:
             #         x = LSTM(self.rnn_size, return_sequences=True)(x)
-            x = PerChannelLSTM(self.rnn_size, return_sequences=True)(x)
+            # x = PerChannelLSTM(self.rnn_size, return_sequences=True)(x)
             # x = Lambda(LayerLambdas.ChannelizedLSTM,
             #            arguments={'num_layers': opt.num_rnn_layers, 'rnn_size': opt.rnn_size})(x)
             # x = LayerLambdas.ChannelizedLSTM(x, opt.num_rnn_layers, opt.rnn_size)
