@@ -68,6 +68,7 @@ class ED_RNN:
                     x = TimeDistributed(MaxPool2D(pool_size=(CONV_POOL[cl])))(x)
 
             # For regular LSTM
+            print("X Shape: ", K.int_shape(x))
             x = TimeDistributed(Flatten())(x)
             # For the PerChannelLSTM user created layer:
             # x = TimeDistributed(Reshape(target_shape=(K.int_shape(x)[2] * K.int_shape(x)[3], K.int_shape(x)[4])))(x)
