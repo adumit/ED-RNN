@@ -820,13 +820,19 @@ class PerChannelLSTM(Recurrent):
         print("recurrent kernel shape: ", K.int_shape(self.recurrent_kernel))
         z += tf.tensordot(h_tm1, self.recurrent_kernel, ((1,), (1,)))
 
+        print("z shape: ", K.int_shape(z))
+
         z0 = z[:, :, :self.units]
         z1 = z[:, :, self.units: self.units * 2]
         z2 = z[:, :, self.units * 2: self.units * 3]
         z3 = z[:, :, self.units * 3:]
 
+        print("z0 shape: ", K.int_shape(z0))
         i = self.recurrent_activation(z0)
+
+        print("i and f shape: ", K.int_shape(i))
         f = self.recurrent_activation(z1)
+        print("c_tmi shape: ", K.int_shape(c_tm1))
         c = f * c_tm1 + i * self.activation(z2)
         o = self.recurrent_activation(z3)
 
