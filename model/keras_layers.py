@@ -877,7 +877,7 @@ def NiN(input_layer):
     x = TimeDistributed(AveragePooling2D(pool_size=(3, 3), strides=(2, 2), padding="same"))(x)
     x = TimeDistributed(Dropout(0.2))(x)
     x = Block(x, 192, (3, 3), (1, 1))
-    x = Block(x, 8, (1, 1), (1, 1))
+    x = Block(x, 192, (1, 1), (1, 1))
     return x
 
 
