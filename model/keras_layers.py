@@ -608,8 +608,8 @@ class PerChannelLSTM(Recurrent):
 
         self.dropout = min(1., max(0., dropout))
         self.recurrent_dropout = min(1., max(0., recurrent_dropout))
-        self.channel_i = 3  # Expecting row x channels
-        self.length_i = 2
+        self.channel_i = 1  # Expecting row x channels
+        self.length_i = 0
         super(PerChannelLSTM, self).__init__(**kwargs)
         self.input_spec = InputSpec(ndim=4)
 
