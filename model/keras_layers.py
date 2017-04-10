@@ -848,8 +848,10 @@ class PerChannelLSTM(Recurrent):
         c = c_1 + c_2
         print("c shape: ", K.int_shape(c))
         o = self.recurrent_activation(z3)
-
+        print("o shape: ", K.int_shape(o))
         h = o * self.activation(c)
+
+        print("h shape: ", K.int_shape(h))
         if 0 < self.dropout + self.recurrent_dropout:
             h._uses_learning_phase = True
         return h, [h, c]
