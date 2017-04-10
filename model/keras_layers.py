@@ -700,17 +700,18 @@ class PerChannelLSTM(Recurrent):
     def get_initial_states(self, inputs):
         # Build output layer of samples x output_dim
         # (samples, timesteps, rows, channels)
-        initial_state = K.zeros_like(inputs[0, :, :, :])
-        print("step 1: {}".format(K.int_shape(initial_state)))
-        # (samples, rows, channels)
-        initial_state = K.sum(initial_state, axis=1)
-        print("step 2: {}".format(K.int_shape(initial_state)))
-        initial_state = K.sum(initial_state, axis=0)
-        print("step 3: {}".format(K.int_shape(initial_state)))
-        initial_state = K.expand_dims(initial_state, axis=-1)
-        print("step 4: {}".format(K.int_shape(initial_state)))
-        initial_states = [initial_state for _ in self.states]
-        print("Inital state shape: {}".format(K.int_shape(initial_state)))
+        # initial_state = K.zeros_like(inputs, :, :, :])
+        # print("step 1: {}".format(K.int_shape(initial_state)))
+        # # (samples, rows, channels)
+        # initial_state = K.sum(initial_state, axis=1)
+        # print("step 2: {}".format(K.int_shape(initial_state)))
+        # initial_state = K.sum(initial_state, axis=0)
+        # print("step 3: {}".format(K.int_shape(initial_state)))
+        # initial_state = K.expand_dims(initial_state, axis=-1)
+        # print("step 4: {}".format(K.int_shape(initial_state)))
+        # initial_states = [initial_state for _ in self.states]
+        # print("Inital state shape: {}".format(K.int_shape(initial_state)))
+        initial_states = K.zeros(shape=(self.channels, self.units))
         return initial_states
 
     # def preprocess_input(self, inputs, training=None):
