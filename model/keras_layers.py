@@ -619,6 +619,7 @@ class PerChannelLSTM(Recurrent):
 
         batch_size = input_shape[0] if self.stateful else None
         self.input_dim = input_shape[2:] # Default will be length x channel
+        print("INPUT SHAPE: ", input_shape)
         self.channels = self.input_dim[self.channel_i]
 
         # NB: Not sure about the shapes here. Is keras using these specs
@@ -851,7 +852,7 @@ def NiN(input_layer):
     x = TimeDistributed(AveragePooling2D(pool_size=(3, 3), strides=(2, 2), padding="same"))(x)
     x = TimeDistributed(Dropout(0.2))(x)
     x = Block(x, 192, (3, 3), (1, 1))
-    x = Block(x, 8, (1, 1), (1, 1))
+    x = Block(x, 192, (1, 1), (1, 1))
     return x
 
 
