@@ -80,7 +80,8 @@ class ED_RNN:
             #     else:
             #         x = LSTM(self.rnn_size, return_sequences=True)(x)
                 # x = PerChannelLSTM(self.rnn_size, return_sequences=True)(x)
-            x = Lambda(LayerLambdas.ChannelizedLSTM, arguments=[opt.num_rnn_layers, opt.rnn_size])(x)
+            x = Lambda(LayerLambdas.ChannelizedLSTM,
+                       arguments={'num_layers': opt.num_rnn_layers, 'rnn_size': opt.rnn_size})(x)
             # x = LayerLambdas.ChannelizedLSTM(x, opt.num_rnn_layers, opt.rnn_size)
             # x = TimeDistributed(Flatten())(x)
             self.output = Dense(input_dim=self.rnn_size, units=opt.num_classes, activation='softmax')(x)
