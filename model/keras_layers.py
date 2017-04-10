@@ -691,7 +691,11 @@ class PerChannelLSTM(Recurrent):
         if self.return_sequences:
             return input_shape
         else:
-            return input_shape[0], input_shape[self.channel_i], self.units
+            shape = (input_shape[0], input_shape[self.channel_i], self.units)
+            print("output shape: {}".format(shape))
+            return shape
+
+
 
     def get_initial_states(self, inputs):
         # Build output layer of samples x output_dim
@@ -702,6 +706,7 @@ class PerChannelLSTM(Recurrent):
         initial_state = K.sum(initial_state, axis=1)
         initial_state = K.expand_dims(initial_state, axis=-1)
         initial_states = [initial_state for _ in self.states]
+        print("Inital state shape: {}".format(K.int_shape(initial_state)))
         return initial_states
 
     # def preprocess_input(self, inputs, training=None):
