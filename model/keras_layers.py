@@ -839,7 +839,9 @@ class PerChannelLSTM(Recurrent):
         print("i and f shape: ", K.int_shape(i))
         f = self.recurrent_activation(z1)
         print("c_tmi shape: ", K.int_shape(c_tm1))
-        c = f * c_tm1 + i * self.activation(z2)
+        c_tm1_expanded = K.expand_dims(c_tm1, axis=0)
+        c = f * c_tm1_expanded + i * self.activation(z2)
+        print("c shape: ", K.int_shape(c))
         o = self.recurrent_activation(z3)
 
         h = o * self.activation(c)
