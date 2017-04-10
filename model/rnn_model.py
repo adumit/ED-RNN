@@ -75,10 +75,12 @@ class ED_RNN:
             print("X SHAPE Before LSTMS:", K.int_shape(x))
             slices = []
             for i in range(K.int_shape(x)[3]):  # For each channel
+                print("Compilinig layer {}...".format(i))
                 sliver = LSTM(self.rnn_size, return_sequences=False)(x[:,:,:,i])
                 expanded = K.expand_dims(sliver, axis=-1)
                 slices.append(expanded)
             x = K.concatenate(slices, axis=-1)
+            x = Flatten()(x)
             print("After LSTMs: ", K.int_shape(x))
 
 
@@ -93,8 +95,9 @@ class ED_RNN:
             #            arguments={'num_layers': opt.num_rnn_layers, 'rnn_size': opt.rnn_size})(x)
             # x = LayerLambdas.ChannelizedLSTM(x, opt.num_rnn_layers, opt.rnn_size)
             # x = TimeDistributed(Flatten())(x)
+
             self.output = Dense(input_dim=self.rnn_size, units=opt.num_classes, activation='softmax')(x)
-            self.model = Model(input=self.inputs, output=self.output)
+            self.model = Model(inputs=self.inputs, outputs=self.output)
             self.model.summary()
             self.optimizer = Adam(lr=opt.learning_rate, decay=0.05)
             self.model.compile(loss='sparse_categorical_crossentropy', optimizer=self.optimizer,
