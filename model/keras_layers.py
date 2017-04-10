@@ -704,27 +704,27 @@ class PerChannelLSTM(Recurrent):
         initial_states = [initial_state for _ in self.states]
         return initial_states
 
-    def preprocess_input(self, inputs, training=None):
-        if self.implementation == 0:
-            input_shape = K.int_shape(inputs)
-            input_dim = input_shape[2:]
-            timesteps = input_shape[1]
-
-            x_i = _time_distributed_dense(inputs, self.kernel_i, self.bias_i,
-                                          self.dropout, input_dim, self.units,
-                                          timesteps, training=training)
-            x_f = _time_distributed_dense(inputs, self.kernel_f, self.bias_f,
-                                          self.dropout, input_dim, self.units,
-                                          timesteps, training=training)
-            x_c = _time_distributed_dense(inputs, self.kernel_c, self.bias_c,
-                                          self.dropout, input_dim, self.units,
-                                          timesteps, training=training)
-            x_o = _time_distributed_dense(inputs, self.kernel_o, self.bias_o,
-                                          self.dropout, input_dim, self.units,
-                                          timesteps, training=training)
-            return K.concatenate([x_i, x_f, x_c, x_o], axis=2)
-        else:
-            return inputs
+    # def preprocess_input(self, inputs, training=None):
+    #     if self.implementation == 0:
+    #         input_shape = K.int_shape(inputs)
+    #         input_dim = input_shape[2:]
+    #         timesteps = input_shape[1]
+    #
+    #         x_i = _time_distributed_dense(inputs, self.kernel_i, self.bias_i,
+    #                                       self.dropout, input_dim, self.units,
+    #                                       timesteps, training=training)
+    #         x_f = _time_distributed_dense(inputs, self.kernel_f, self.bias_f,
+    #                                       self.dropout, input_dim, self.units,
+    #                                       timesteps, training=training)
+    #         x_c = _time_distributed_dense(inputs, self.kernel_c, self.bias_c,
+    #                                       self.dropout, input_dim, self.units,
+    #                                       timesteps, training=training)
+    #         x_o = _time_distributed_dense(inputs, self.kernel_o, self.bias_o,
+    #                                       self.dropout, input_dim, self.units,
+    #                                       timesteps, training=training)
+    #         return K.concatenate([x_i, x_f, x_c, x_o], axis=2)
+    #     else:
+    #         return inputs
 
     def reset_states(self, states_value=None):
         if not self.stateful:
