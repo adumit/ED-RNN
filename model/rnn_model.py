@@ -71,8 +71,8 @@ class ED_RNN:
             print("X Shape: ", K.int_shape(x))
             # x = TimeDistributed(Flatten())(x)
             # For the PerChannelLSTM user created layer:
-            # x = TimeDistributed(Reshape(target_shape=(K.int_shape(x)[2] * K.int_shape(x)[3], K.int_shape(x)[4])))(x)
-            print("X SHAPE:", x.shape)
+            x = TimeDistributed(Reshape(target_shape=(K.int_shape(x)[2] * K.int_shape(x)[3], K.int_shape(x)[4])))(x)
+            print("X SHAPE:", K.int_shape(x))
             # for rl in range(opt.num_rnn_layers):
             #     # Don't return states for the last layer
             #     if rl == opt.num_rnn_layers - 1:
