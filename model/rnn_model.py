@@ -72,14 +72,15 @@ class ED_RNN:
             # For the PerChannelLSTM user created layer:
             # x = TimeDistributed(Reshape(target_shape=(K.int_shape(x)[2] * K.int_shape(x)[3], K.int_shape(x)[4])))(x)
             print("X SHAPE:", x.shape)
-            for rl in range(opt.num_rnn_layers):
-                # Don't return states for the last layer
-                if rl == opt.num_rnn_layers - 1:
-                    x = LSTM(self.rnn_size, return_sequences=False)(x)
-                else:
-                    x = LSTM(self.rnn_size, return_sequences=True)(x)
+            # for rl in range(opt.num_rnn_layers):
+            #     # Don't return states for the last layer
+            #     if rl == opt.num_rnn_layers - 1:
+            #         x = LSTM(self.rnn_size, return_sequences=False)(x)
+            #     else:
+            #         x = LSTM(self.rnn_size, return_sequences=True)(x)
                 # x = PerChannelLSTM(self.rnn_size, return_sequences=True)(x)
-            # x = LayerLambdas.ChannelizedLSTM(x, opt.num_rnn_layers, opt.rnn_size)
+            # x = Lambda(LayerLambdas.ChannelizedLSTM, output_shape=LayerLambdas.ChannelizedLSTM)
+            x = LayerLambdas.ChannelizedLSTM(x, opt.num_rnn_layers, opt.rnn_size)
             # x = TimeDistributed(Flatten())(x)
             self.output = Dense(input_dim=self.rnn_size, units=opt.num_classes, activation='softmax')(x)
             self.model = Model(input=self.inputs, output=self.output)

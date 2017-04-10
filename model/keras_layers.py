@@ -35,6 +35,11 @@ class LayerLambdas:
         print(stacked)
         return stacked
 
+    # @staticmethod
+    # def CLSTM_Output_Shape(x, rnn_size):
+    #     return
+
+
     @staticmethod
     def OnOffThreshold(x, pos_threshold, neg_threshold):
         pos_output = x + (1.0 + pos_threshold)
@@ -43,6 +48,7 @@ class LayerLambdas:
         neg_output = relu(-neg_output, 0.0)
 
         output = K.concatenate([pos_output, neg_output], axis=3)
+        return output
 
     @staticmethod
     def OnOffThreshold_OutputShape(x):
