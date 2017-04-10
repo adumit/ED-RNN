@@ -586,6 +586,7 @@ class PerChannelLSTM(Recurrent):
                  dropout=0.,
                  recurrent_dropout=0.,
                  **kwargs):
+
         self.units = units
         self.activation = activations.get(activation)
         self.recurrent_activation = activations.get(recurrent_activation)
