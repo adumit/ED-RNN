@@ -799,8 +799,9 @@ class PerChannelLSTM(Recurrent):
         print('r calc shape: ', K.int_shape(r_calc))
         z += r_calc
         if self.use_bias:
-            print("bias shape: ", K.int_shape(self.bias))
-            z = K.bias_add(z, self.bias)
+            # print("bias shape: ", K.int_shape(self.bias))
+            # z = K.bias_add(z, self.bias)
+            z += self.bias
 
         z0 = z[:, :, :self.units]
         z1 = z[:, :, self.units: self.units * 2]
