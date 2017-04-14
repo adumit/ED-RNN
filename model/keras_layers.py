@@ -578,7 +578,7 @@ class PerChannelLSTM(Recurrent):
     def __init__(self, units,
                  activation='tanh',
                  recurrent_activation='hard_sigmoid',
-                 use_bias=True,
+                 use_bias=False,
                  kernel_initializer='glorot_uniform',
                  recurrent_initializer='orthogonal',
                  bias_initializer='zeros',
@@ -703,46 +703,11 @@ class PerChannelLSTM(Recurrent):
             return shape
 
 
-
     def get_initial_states(self, inputs):
-        # Build output layer of samples x output_dim
-        # (samples, timesteps, rows, channels)
-        # initial_state = K.zeros_like(inputs, :, :, :])
-        # print("step 1: {}".format(K.int_shape(initial_state)))
-        # # (samples, rows, channels)
-        # initial_state = K.sum(initial_state, axis=1)
-        # print("step 2: {}".format(K.int_shape(initial_state)))
-        # initial_state = K.sum(initial_state, axis=0)
-        # print("step 3: {}".format(K.int_shape(initial_state)))
-        # initial_state = K.expand_dims(initial_state, axis=-1)
-        # print("step 4: {}".format(K.int_shape(initial_state)))
-        # initial_states = [initial_state for _ in self.states]
-        # print("Inital state shape: {}".format(K.int_shape(initial_state)))
         initial_state = K.zeros(shape=(K.int_shape(inputs)[0], self.channels, self.units))
         initial_states = [initial_state for _ in self.states]
         return initial_states
 
-    # def preprocess_input(self, inputs, training=None):
-    #     if self.implementation == 0:
-    #         input_shape = K.int_shape(inputs)
-    #         input_dim = input_shape[2:]
-    #         timesteps = input_shape[1]
-    #
-    #         x_i = _time_distributed_dense(inputs, self.kernel_i, self.bias_i,
-    #                                       self.dropout, input_dim, self.units,
-    #                                       timesteps, training=training)
-    #         x_f = _time_distributed_dense(inputs, self.kernel_f, self.bias_f,
-    #                                       self.dropout, input_dim, self.units,
-    #                                       timesteps, training=training)
-    #         x_c = _time_distributed_dense(inputs, self.kernel_c, self.bias_c,
-    #                                       self.dropout, input_dim, self.units,
-    #                                       timesteps, training=training)
-    #         x_o = _time_distributed_dense(inputs, self.kernel_o, self.bias_o,
-    #                                       self.dropout, input_dim, self.units,
-    #                                       timesteps, training=training)
-    #         return K.concatenate([x_i, x_f, x_c, x_o], axis=2)
-    #     else:
-    #         return inputs
 
     def reset_states(self, states_value=None):
         if not self.stateful:
@@ -815,7 +780,6 @@ class PerChannelLSTM(Recurrent):
         # resulting calculation: batchsize x units*4 x channel
         masked_inputs = inputs * dp_mask[0]
         print("Input shape: ", K.int_shape(masked_inputs))
-        # print("mask shape: ", dp_mask.shape)
         print("kernel shape:", K.int_shape(self.kernel))
 
         # NOTE: Edited - Not multiplying the state by the mask `dp_mask[0]`
@@ -833,7 +797,6 @@ class PerChannelLSTM(Recurrent):
         r_calc = tf.einsum('bcu,cuf->bcf', masked_hidden, self.recurrent_kernel)
         print('r calc shape: ', K.int_shape(r_calc))
         z += r_calc
-        # z += tf.tensordot(h_tm1, self.recurrent_kernel, ((1,), (1,)))
 
 
 
