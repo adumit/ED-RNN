@@ -99,7 +99,7 @@ class ED_RNN:
             # x = LayerLambdas.ChannelizedLSTM(x, opt.num_rnn_layers, opt.rnn_size)
             # x = TimeDistributed(Flatten())(x)
             x = Flatten()(x)
-            self.output = Dense(input_dim=self.rnn_size, units=opt.num_classes, activation='softmax')(x)
+            self.output = Dense(input_dim=K.int_shape(x)[1], units=opt.num_classes, activation='softmax')(x)
             self.model = Model(inputs=self.inputs, outputs=self.output)
             self.model.summary()
             self.optimizer = Adam(lr=opt.learning_rate, decay=0.05)
