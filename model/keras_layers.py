@@ -48,7 +48,7 @@ class LayerLambdas:
 
 
     @staticmethod
-    def OnOffThreshold(x, pos_threshold, neg_threshold):
+    def OnOffThreshold(x, pos_threshold=.003, neg_threshold=.003):
         pos_output = x + (1.0 + pos_threshold)
         pos_output = relu(pos_output, 0.0)
         neg_output = x - (1.0 - neg_threshold)
@@ -97,6 +97,7 @@ class EMA(Recurrent):
         output = (1.0 - 1.0/self.tao) * prev_output + 1.0/self.tao * x
 
         return output, [output]
+
 
 class ScaledLogReturn(Recurrent):
     def __init__(self, shape, tao=1.5, **kwargs):
