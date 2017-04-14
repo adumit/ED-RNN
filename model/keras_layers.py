@@ -55,6 +55,7 @@ class LayerLambdas:
         neg_output = relu(-neg_output, 0.0)
 
         output = K.concatenate([pos_output, neg_output], axis=3)
+        print("output from onoff shape: ", K.int_shape(output))
         return output
 
     @staticmethod
