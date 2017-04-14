@@ -137,7 +137,7 @@ class ScaledLogReturn(Recurrent):
         # change_first_input = np.ones(shape=x.get_shape().as_list())
         # change_first_input[:, 0, :] *= self.tao
         # TODO: What happens if beta x is 0? or negative?
-        return self.beta * np.log(x)
+        return self.beta * tf.log(x)
 
     def get_initial_states(self, inputs):
         """ From the ED_EMA """
