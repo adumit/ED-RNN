@@ -772,6 +772,7 @@ class PerChannelLSTM(Recurrent):
     def get_constants(self, inputs, training=None):
         constants = []
         if 0 < self.dropout < 1:
+            print("Getting Constants!!!")
             ones = K.zeros_like(inputs)
             ones = K.sum(ones, axis=1)
             ones += 1
@@ -812,7 +813,7 @@ class PerChannelLSTM(Recurrent):
         # input kernel: length x channels x units*4
         # for each channel_i, we want batchsize x length_i dot length_i x unit * 4
         # resulting calculation: batchsize x units*4 x channel
-        masked_inputs = inputs * dp_mask
+        masked_inputs = inputs * dp_mask[0]
         print("Input shape: ", K.int_shape(masked_inputs))
         # print("mask shape: ", dp_mask.shape)
         print("kernel shape:", K.int_shape(self.kernel))
@@ -827,7 +828,7 @@ class PerChannelLSTM(Recurrent):
         # recurrent kernel: channels x units x units*4
         # NOTE: Edited - Not multiplying the state by the mask `rec_dp_mask[0]`
         print("Hidden state shape: ", K.int_shape(h_tm1))
-        masked_hidden = h_tm1 * rec_dp_mask
+        masked_hidden = h_tm1 * rec_dp_mask[0]
         print("recurrent kernel shape: ", K.int_shape(self.recurrent_kernel))
         r_calc = tf.einsum('bcu,cuf->bcf', masked_hidden, self.recurrent_kernel)
         print('r calc shape: ', K.int_shape(r_calc))

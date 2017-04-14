@@ -88,7 +88,7 @@ class ED_RNN:
             # for rl in range(opt.num_rnn_layers):
             #     # Don't return states for the last layer
             #     if rl == opt.num_rnn_layers - 1:
-            #         x = LSTM(self.rnn_size, return_sequences=False)(x)
+                    x = LSTM(self.rnn_size, return_sequences=False)(x)
             #     else:
             #         x = LSTM(self.rnn_size, return_sequences=True)(x)
             x = PerChannelLSTM(self.rnn_size, return_sequences=True)(x)
