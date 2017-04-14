@@ -114,7 +114,7 @@ class ScaledLogReturn(Recurrent):
 
     def beta_init(self, shape, dtype=None):
         """ From EDEMA """
-        return K.variable(np.ones(shape=shape, dtype=dtype) * self.beta)
+        return K.variable(np.ones(shape=shape, dtype=dtype))
 
     def build(self, input_shape):
         input_dim = input_shape[2]
