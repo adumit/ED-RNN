@@ -812,23 +812,24 @@ class PerChannelLSTM(Recurrent):
         # input kernel: length x channels x units*4
         # for each channel_i, we want batchsize x length_i dot length_i x unit * 4
         # resulting calculation: batchsize x units*4 x channel
-
-        print("Input shape: ", K.int_shape(inputs))
+        masked_inputs = inputs * dp_mask
+        print("Input shape: ", K.int_shape(masked_inputs))
         # print("mask shape: ", dp_mask.shape)
         print("kernel shape:", K.int_shape(self.kernel))
 
         # NOTE: Edited - Not multiplying the state by the mask `dp_mask[0]`
         # z = tf.tensordot(inputs, self.kernel, ((self.length_i + 1,), (self.length_i,)))
         # print("z shape: ", K.int_shape(z))
-        z = tf.einsum('blc,lcf->bcf', inputs, self.kernel)
+        z = tf.einsum('blc,lcf->bcf', masked_inputs, self.kernel)
         print("z shape: ", K.int_shape(z))
 
         # h_tm1: bs x channels x units
         # recurrent kernel: channels x units x units*4
         # NOTE: Edited - Not multiplying the state by the mask `rec_dp_mask[0]`
         print("Hidden state shape: ", K.int_shape(h_tm1))
+        masked_hidden = h_tm1 * rec_dp_mask
         print("recurrent kernel shape: ", K.int_shape(self.recurrent_kernel))
-        r_calc = tf.einsum('bcu,cuf->bcf', h_tm1, self.recurrent_kernel)
+        r_calc = tf.einsum('bcu,cuf->bcf', masked_hidden, self.recurrent_kernel)
         print('r calc shape: ', K.int_shape(r_calc))
         z += r_calc
         # z += tf.tensordot(h_tm1, self.recurrent_kernel, ((1,), (1,)))
