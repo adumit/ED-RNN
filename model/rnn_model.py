@@ -100,7 +100,7 @@ class ED_RNN:
             # x = TimeDistributed(Flatten())(x)
             x = Flatten()(x)
             print("X shape after flatten: ", K.int_shape(x))
-            self.output = Dense(input_dim=K.int_shape(x)[1] * 2, units=opt.num_classes, activation='softmax')(x)
+            self.output = Dense(units=opt.num_classes, activation='softmax')(x)
             self.model = Model(inputs=self.inputs, outputs=self.output)
             self.model.summary()
             self.optimizer = Adam(lr=opt.learning_rate, decay=0.05)

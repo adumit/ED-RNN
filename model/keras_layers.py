@@ -450,9 +450,10 @@ class CLSTM(Recurrent):
         if isinstance(input_shape, list):
             input_shape = input_shape[0]
         if self.return_sequences:
-            return input_shape
+            return input_shape[0], input_shape[1], self.units, input_shape[3]
+            # return input_shape
         else:
-            return input_shape[0], input_shape[2], input_shape[3], input_shape[4]
+            return input_shape[0], input_shape[1], self.units, input_shape[4]
 
     def get_initial_states(self, inputs):
         # (samples, timesteps, rows, cols, filters)
