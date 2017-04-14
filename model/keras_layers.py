@@ -60,7 +60,9 @@ class LayerLambdas:
     @staticmethod
     def OnOffThreshold_OutputShape(x):
         """ 5 dimension? Batch x Time x l x w x c """
-        return x[0], x[1], x[2], x[3], x[4] * 2
+        shape = K.int_shape(x)
+        print("OnOff Threshold shape: " , shape)
+        return shape[0], shape[1], shape[2], shape[3], shape[4] * 2
 
 
 
