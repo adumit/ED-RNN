@@ -106,6 +106,7 @@ class ScaledLogReturn(Recurrent):
         self.prev_output = None
         self.input_spec = False
         super(ScaledLogReturn, self).__init__(**kwargs)
+        self.input_spec = InputSpec(ndim=5)
 
     def tao_init(self, shape, dtype=None):
         """ From EDEMA """
