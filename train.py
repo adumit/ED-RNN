@@ -29,6 +29,7 @@ if __name__=="__main__":
     parser.add_argument('--num_rnn_layers', type=int, default=1, help='number of layers in the LSTM')
     parser.add_argument('--network', type=str, default="nin", help='Type of network. Either lenet, nin, or anything '
                                                                'else to use conv-net params in rnn_model.py')
+    parser.add_argument('--lstm', type=str,default='clstm', help='Which type of LSTM would you like to use')
     parser.add_argument('--use_edema', type=int, default=1, help='Use the ED_EMA layer or not')
     # optimization
     parser.add_argument('--learning_rate', type=float, default=0.001, help='starting learning rate')

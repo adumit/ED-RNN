@@ -579,11 +579,11 @@ class PerChannelLSTM(Recurrent):
     def __init__(self, units,
                  activation='tanh',
                  recurrent_activation='hard_sigmoid',
-                 use_bias=False,
+                 use_bias=True,
                  kernel_initializer='glorot_uniform',
                  recurrent_initializer='orthogonal',
                  bias_initializer='zeros',
-                 unit_forget_bias=True,
+                 unit_forget_bias=False,
                  kernel_regularizer=None,
                  recurrent_regularizer=None,
                  bias_regularizer=None,
@@ -798,8 +798,8 @@ class PerChannelLSTM(Recurrent):
         r_calc = tf.einsum('bcu,cuf->bcf', masked_hidden, self.recurrent_kernel)
         print('r calc shape: ', K.int_shape(r_calc))
         z += r_calc
-
-
+        if self.use_bias:
+            z = K.bias_add(z, self.bias)
 
         z0 = z[:, :, :self.units]
         z1 = z[:, :, self.units: self.units * 2]
