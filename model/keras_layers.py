@@ -697,7 +697,7 @@ class PerChannelLSTM(Recurrent):
         if isinstance(input_shape, list):
             input_shape = input_shape[0]
         if self.return_sequences:
-            return input_shape
+            return input_shape[0], input_shape[1], self.units, input_shape[3]
         else:
             shape = (input_shape[0], input_shape[self.channel_i], self.units)
             print("output shape: {}".format(shape))
