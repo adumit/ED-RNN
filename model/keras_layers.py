@@ -117,7 +117,7 @@ class ScaledLogReturn(Recurrent):
         return K.variable(np.ones(shape=shape, dtype=dtype))
 
     def build(self, input_shape):
-        input_dim = input_shape[2]
+        input_dim = input_shape[2:]
         self.input_dim = input_dim
         self.output_dim = input_dim
         self.beta = self.add_weight(shape=self.shape, initializer=self.beta_init)
