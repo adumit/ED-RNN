@@ -55,7 +55,7 @@ class ED_RNN:
                 x = ED_EMA(shape=(opt.height, opt.width, K.int_shape(x)[4]),
                            tao=1.5, v_pos_threshold=0.003, v_neg_threshold=0.003, beta=2.0, return_sequences=True)(x)
             elif opt.use_edema == 2:
-                x = ScaledLogReturn(opt.height, opt.width)(x)
+                x = ScaledLogReturn(shape=(opt.height, opt.width, K.int_shape(x)[4]))(x)
                 x = Lambda(LayerLambdas.OnOffThreshold, LayerLambdas.OnOffThreshold_OutputShape)(x)
 
             if opt.network.lower() == "lenet":
