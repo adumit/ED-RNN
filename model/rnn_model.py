@@ -99,6 +99,7 @@ class ED_RNN:
             # x = LayerLambdas.ChannelizedLSTM(x, opt.num_rnn_layers, opt.rnn_size)
             # x = TimeDistributed(Flatten())(x)
             x = Flatten()(x)
+            print("X shape after flatten: ", K.int_shape(x))
             self.output = Dense(input_dim=K.int_shape(x)[1], units=opt.num_classes, activation='softmax')(x)
             self.model = Model(inputs=self.inputs, outputs=self.output)
             self.model.summary()
