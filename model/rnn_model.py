@@ -103,9 +103,9 @@ class ED_RNN:
                                  validation_steps=train_loader.num_valid_batches,
                                  epochs=self.max_epochs,
                                  callbacks=[TestCallback(train_loader, train_loader.num_valid_batches)])
-        x_ = train_loader.next_batch()[0]
-        self.plot_KTH(x_, 2, 0)
-        self.plot_KTH(x_, 2, 1)
+        # x_ = train_loader.next_batch()[0]
+        # self.plot_KTH(x_, 2, 0)
+        # self.plot_KTH(x_, 2, 1)
 
     def get_activations(self, x_, layer_index):
         funcs = []
